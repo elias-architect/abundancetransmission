@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import { useLang } from "@/lib/lang-context";
+import { translations } from "@/lib/translations";
 import {
   LineChart,
   Line,
@@ -176,6 +178,9 @@ function EquityTooltip({ active, payload }: { active?: boolean; payload?: Array<
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function CommandCenterClient() {
+  const { lang } = useLang();
+  const cc = translations[lang].cc;
+
   const [activeTab,     setActiveTab]     = useState<"backtest" | "parameters" | "results" | "live" | "library">("backtest");
   const [strategy,      setStrategy]      = useState<"enigma369" | "sniper">("enigma369");
   const [params,        setParams]        = useState(STRATEGIES.enigma369.defaultParams);
@@ -242,10 +247,8 @@ export default function CommandCenterClient() {
                 <div className="text-xs font-bold uppercase tracking-widest text-gold mb-2">
                   Steward Access
                 </div>
-                <h1 className="text-2xl font-black text-white">Command Center</h1>
-                <p className="text-sm text-slate-400 mt-2">
-                  Enter your steward access code to continue.
-                </p>
+                <h1 className="text-2xl font-black text-white">{cc.passwordTitle}</h1>
+                <p className="text-sm text-slate-400 mt-2">{cc.passwordSub}</p>
               </div>
               <form onSubmit={handlePassword} className="space-y-3">
                 <input
@@ -256,22 +259,22 @@ export default function CommandCenterClient() {
                   className="w-full px-4 py-3 rounded-xl bg-deep border border-border text-white placeholder:text-slate-600 text-sm outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20 text-center tracking-widest"
                 />
                 {pwError && (
-                  <p className="text-xs text-red-400">Incorrect code. Try: transmission</p>
+                  <p className="text-xs text-red-400">{cc.passwordError}</p>
                 )}
                 <button
                   type="submit"
                   className="w-full py-3 rounded-xl bg-gold text-deep font-bold text-sm hover:bg-amber-400 transition-all"
                 >
-                  Enter the Command Center
+                  {cc.passwordBtn}
                 </button>
               </form>
               <p className="text-xs text-slate-600">
-                Steward access granted via early signup.{" "}
+                {cc.passwordHint}{" "}
                 <span
                   onClick={() => { window.location.href = "/#early-access"; }}
                   className="text-gold hover:underline cursor-pointer"
                 >
-                  Join the list.
+                  {cc.passwordJoin}
                 </span>
               </p>
             </div>

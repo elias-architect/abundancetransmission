@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
+import { LangProvider } from "@/lib/lang-context";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -50,9 +51,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`dark ${inter.variable}`}>
       <body className="min-h-screen flex flex-col bg-deep">
-        <Nav />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <LangProvider>
+          <Nav />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </LangProvider>
       </body>
     </html>
   );
