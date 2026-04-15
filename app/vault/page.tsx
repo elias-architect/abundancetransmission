@@ -190,7 +190,7 @@ export default function VaultPage() {
       </div>
 
       {/* Contribute */}
-      <div className="relative rounded-3xl border border-border bg-navy p-8 sm:p-10 mb-10 overflow-hidden text-center">
+      <div className="relative rounded-3xl border border-gold/20 bg-navy p-8 sm:p-10 mb-10 overflow-hidden text-center">
         <div className="absolute inset-0 water-shimmer opacity-40" />
         <div className="relative z-10 space-y-5">
           <h3 className="text-xl font-bold text-white">
@@ -202,15 +202,31 @@ export default function VaultPage() {
             acknowledged in the book and receive early access to all releases.
           </p>
           <a
-            href="mailto:niko@abundancetransmission.com?subject=Vault%20Contribution"
+            href="https://paypal.me/abundancetransmited"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gold text-deep font-bold text-sm hover:bg-amber-400 transition-all"
           >
             <Heart size={16} />
-            Reach Out to Contribute
+            Contribute via PayPal
           </a>
+          <div className="flex flex-col items-center gap-3 pt-2">
+            <div className="p-3 bg-white rounded-2xl inline-block">
+              {/* PayPal QR — scan to pay paypal.me/abundancetransmited */}
+              <img
+                src="/paypal-qr.png"
+                alt="PayPal QR — abundancetransmited"
+                width={160}
+                height={160}
+                className="rounded-lg"
+              />
+            </div>
+            <p className="text-xs text-slate-500">
+              Scan to contribute · paypal.me/abundancetransmited
+            </p>
+          </div>
           <p className="text-xs text-slate-600">
-            Contact niko@abundancetransmission.com — payment details provided
-            personally. No automated payment processor at this stage.
+            Questions? niko@abundancetransmission.com
           </p>
         </div>
       </div>
