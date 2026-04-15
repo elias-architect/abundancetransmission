@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useForm, ValidationError } from "@formspree/react";
 import { Send, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,46 +14,15 @@ export default function EmailForm({
   ctaText?: string;
   dark?: boolean;
 }) {
-  const [email, setEmail]     = useState("");
-  const [status, setStatus]   = useState<"idle"|"loading"|"done"|"error">("idle");
-  const [message, setMessage] = useState("");
+  const [state, handleSubmit] = useForm("mdayaldk");
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email.includes("@")) {
-      setStatus("error");
-      setMessage("Please enter a valid email.");
-      return;
-    }
-    setStatus("loading");
-
-    // Formspree endpoint — replace with your own
-    try {
-      const res = await fetch("https://formspree.io/f/xpwrjnog", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ email, _subject: "New Early Access Signup" }),
-      });
-      if (res.ok) {
-        setStatus("done");
-        setMessage("You're in. The transmission is beginning.");
-        setEmail("");
-      } else {
-        throw new Error("Failed");
-      }
-    } catch {
-      // Fallback — still acknowledge, just log to mailto
-      setStatus("done");
-      setMessage("Received. We'll be in touch at " + email);
-      setEmail("");
-    }
-  }
-
-  if (status === "done") {
+  if (state.succeeded) {
     return (
       <div className="flex items-center gap-3 py-4">
         <CheckCircle size={20} className="text-emerald flex-shrink-0" />
-        <span className="text-sm text-slate-300">{message}</span>
+        <span className="text-sm text-slate-300">
+          You&apos;re in. The transmission is beginning.
+        </span>
       </div>
     );
   }
@@ -68,9 +37,8 @@ export default function EmailForm({
       <div className="flex gap-2">
         <input
           type="email"
+          name="email"
           required
-          value={email}
-          onChange={(e) => { setEmail(e.target.value); setStatus("idle"); }}
           placeholder={placeholder}
           className={cn(
             "flex-1 px-4 py-3 rounded-lg text-sm border outline-none transition-all",
@@ -81,10 +49,10 @@ export default function EmailForm({
         />
         <button
           type="submit"
-          disabled={status === "loading"}
+          disabled={state.submitting}
           className="px-5 py-3 rounded-lg bg-gold text-deep font-bold text-sm flex items-center gap-2 hover:bg-amber-400 transition-all disabled:opacity-60 whitespace-nowrap"
         >
-          {status === "loading" ? (
+          {state.submitting ? (
             <span className="w-4 h-4 border-2 border-deep/30 border-t-deep rounded-full animate-spin" />
           ) : (
             <Send size={14} />
@@ -92,9 +60,7 @@ export default function EmailForm({
           {ctaText}
         </button>
       </div>
-      {status === "error" && (
-        <p className="text-xs text-red-400">{message}</p>
-      )}
+      <ValidationError errors={state.errors} className="text-xs text-red-400" />
     </form>
   );
 }
