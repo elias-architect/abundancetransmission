@@ -19,6 +19,13 @@ export function LangProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
+      // URL param takes priority (used in email links: ?lang=fr)
+      const urlParam = new URLSearchParams(window.location.search).get("lang") as Lang | null;
+      if (urlParam === "en" || urlParam === "fr") {
+        setLangState(urlParam);
+        localStorage.setItem("at_lang", urlParam);
+        return;
+      }
       const saved = localStorage.getItem("at_lang") as Lang;
       if (saved === "fr") setLangState("fr");
     } catch {}

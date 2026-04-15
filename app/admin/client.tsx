@@ -47,6 +47,8 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
   const [newFile,      setNewFile]      = useState<File | null>(null);
   const [posting,      setPosting]      = useState(false);
   const [postSuccess,  setPostSuccess]  = useState(false);
+  const [notifyMembers, setNotifyMembers] = useState(true);
+  const [emailResult,  setEmailResult]  = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Invite form
@@ -104,16 +106,18 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
         description: newDesc || null,
         file_url,
         external_url: newType === "music" ? newUrl || null : null,
+        notify: notifyMembers,
       }),
     });
 
     setPosting(false);
     if (res.ok) {
       setPostSuccess(true);
+      setEmailResult(notifyMembers ? "Email notifications sent to all members." : null);
       setNewTitle(""); setNewDesc(""); setNewUrl(""); setNewFile(null);
       if (fileRef.current) fileRef.current.value = "";
       loadData();
-      setTimeout(() => setPostSuccess(false), 3000);
+      setTimeout(() => { setPostSuccess(false); setEmailResult(null); }, 5000);
     } else {
       const err = await res.json();
       alert("Error: " + err.error);
@@ -282,10 +286,26 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
                       </div>
                     )}
 
+                    {/* Notify toggle */}
+                    <button
+                      type="button"
+                      onClick={() => setNotifyMembers((v) => !v)}
+                      className={`w-full py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 ${notifyMembers ? "border-teal/40 bg-teal/10 text-teal" : "border-border text-slate-500"}`}
+                    >
+                      <Mail size={12} />
+                      {notifyMembers ? "Email members on post ✓" : "Email members on post — off"}
+                    </button>
+
                     <button type="submit" disabled={posting}
                       className="w-full py-3 rounded-xl bg-gold text-deep font-bold text-sm hover:bg-amber-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
                       {posting ? <Loader2 size={14} className="animate-spin" /> : postSuccess ? <><Check size={14} /> Posted!</> : <><Plus size={14} /> Post Content</>}
                     </button>
+
+                    {emailResult && (
+                      <p className="text-xs text-teal flex items-center gap-1.5">
+                        <Check size={11} /> {emailResult}
+                      </p>
+                    )}
                   </form>
                 </div>
 
