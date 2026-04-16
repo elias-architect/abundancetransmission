@@ -5,7 +5,8 @@ import {
   FileText, Music, Download, LogOut, Play, Pause,
   ExternalLink, Loader2, ChevronRight, Shield, Sparkles,
   Star, Calendar, Clock, MapPin, StickyNote, Lock,
-  Eye, EyeOff, Bell, BellOff, CheckCircle2, Settings
+  Eye, EyeOff, Bell, BellOff, CheckCircle2, Settings,
+  BookOpen, ArrowRight
 } from "lucide-react";
 import Link from "next/link";
 import MemberOnboarding from "@/components/member-onboarding";
@@ -302,6 +303,107 @@ function SoulCalibrationTab({ userEmail }: { userEmail: string }) {
   );
 }
 
+// ── Books Tab ─────────────────────────────────────────────────────────────────
+type BookEntry = {
+  id: string; slug: string; title: string; tagline: string | null;
+  author_agent: string; author_name: string | null;
+  description: string | null; cover_image_url: string | null;
+  price: number;
+};
+
+const AGENT_COLORS: Record<string, string> = {
+  SAGE:      "border-gold/30    text-gold",
+  MAGE:      "border-teal/30    text-teal",
+  CREATOR:   "border-amber-400/30 text-amber-400",
+  INNOCENT:  "border-teal/30    text-teal",
+  CAREGIVER: "border-emerald-400/30 text-emerald-400",
+  RULER:     "border-accent/30  text-accent",
+  ELIAS:     "border-gold/30    text-gold",
+};
+
+function BooksTab() {
+  const [books,   setBooks]   = useState<BookEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/books")
+      .then((r) => r.json())
+      .then((d) => setBooks(Array.isArray(d) ? d : []))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 size={24} className="animate-spin text-gold" /></div>;
+
+  if (books.length === 0) return (
+    <div className="rounded-2xl border border-border bg-navy/40 p-12 text-center">
+      <BookOpen size={32} className="text-slate-700 mx-auto mb-3" />
+      <p className="text-slate-500 text-sm">No books published yet.</p>
+      <p className="text-xs text-slate-700 mt-1">Check back soon — the Council is writing.</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4 max-w-2xl">
+      <div className="text-xs font-bold uppercase tracking-widest text-gold mb-2">The Council Library</div>
+
+      {books.map((book) => {
+        const agentColor = AGENT_COLORS[book.author_agent] ?? "border-border text-slate-400";
+        const [borderColor, textColor] = agentColor.split(" ");
+        return (
+          <div key={book.id}
+            className={`rounded-2xl border bg-navy/60 overflow-hidden transition-all hover:bg-navy ${borderColor}`}>
+            <div className="flex gap-5 p-5">
+              {/* Cover */}
+              <div className="w-20 flex-shrink-0">
+                <div className="aspect-[3/4] rounded-xl overflow-hidden border border-border/40"
+                  style={{ background: "linear-gradient(135deg,#0a0f1e,#050810)" }}>
+                  {book.cover_image_url
+                    ? <img src={book.cover_image_url} alt={book.title} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center"><BookOpen size={18} className="text-slate-700" /></div>
+                  }
+                </div>
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className={`text-xs font-bold uppercase tracking-widest ${textColor}`}>
+                  {book.author_name ?? book.author_agent}
+                </div>
+                <h3 className="text-base font-black text-white leading-tight">{book.title}</h3>
+                {book.tagline && (
+                  <p className="text-xs text-slate-400 italic">{book.tagline}</p>
+                )}
+                {book.description && (
+                  <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
+                    {book.description.split("\n\n")[0]}
+                  </p>
+                )}
+
+                {/* Price + actions */}
+                <div className="flex items-center gap-3 pt-1 flex-wrap">
+                  <span className="text-sm font-black text-white">
+                    ${Number(book.price).toFixed(0)}
+                    <span className="text-xs font-normal text-slate-500 ml-1">USD</span>
+                  </span>
+                  <Link href={`/books/${book.slug}/read`}
+                    className="text-xs font-bold text-slate-400 hover:text-gold transition-colors flex items-center gap-1">
+                    Read Ch.1 Free <ArrowRight size={11} />
+                  </Link>
+                  <Link href={`/books/${book.slug}#get-book`}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-black text-deep hover:opacity-90 transition-all"
+                    style={{ background: "linear-gradient(90deg,#f59e0b,#fde68a)" }}>
+                    Get the Book <ArrowRight size={11} />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Account Settings Tab ──────────────────────────────────────────────────────
 function AccountTab({ userEmail, newsletterSubscribed }: { userEmail: string; newsletterSubscribed: boolean }) {
   const [pw,         setPw]         = useState("");
@@ -412,7 +514,7 @@ export default function MemberClient({
   showOnboarding: boolean; newsletterSubscribed: boolean;
 }) {
   const [onboarding, setOnboarding] = useState(showOnboarding);
-  const [tab, setTab] = useState<"newsletters" | "music" | "calibration" | "account">("newsletters");
+  const [tab, setTab] = useState<"newsletters" | "music" | "books" | "calibration" | "account">("newsletters");
   const [content, setContent] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -483,6 +585,10 @@ export default function MemberClient({
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${tab === "music" ? "bg-accent/10 text-accent border border-accent/30" : "text-slate-500 hover:text-slate-300"}`}>
             <Music size={12} /> Music ({music.length})
           </button>
+          <button onClick={() => setTab("books")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${tab === "books" ? "bg-gold/10 text-gold border border-gold/30" : "text-slate-500 hover:text-slate-300"}`}>
+            <BookOpen size={12} /> Books
+          </button>
           <button onClick={() => setTab("calibration")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${tab === "calibration" ? "bg-gold/10 text-gold border border-gold/30" : "text-slate-500 hover:text-slate-300"}`}>
             <Star size={12} /> Soul Calibration
@@ -496,6 +602,8 @@ export default function MemberClient({
         {/* Content */}
         {tab === "account" ? (
           <AccountTab userEmail={userEmail} newsletterSubscribed={newsletterSubscribed} />
+        ) : tab === "books" ? (
+          <BooksTab />
         ) : tab === "calibration" ? (
           <SoulCalibrationTab userEmail={userEmail} />
         ) : loading ? (

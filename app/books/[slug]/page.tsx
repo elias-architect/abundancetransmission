@@ -137,18 +137,26 @@ export default async function BookPage({ params }: { params: Promise<{ slug: str
               <div id="get-book" className="pt-4 space-y-3">
                 <div className="flex items-baseline gap-3">
                   <span className="text-3xl font-black text-white">
-                    {book.price > 0 ? `$${Number(book.price).toFixed(2)}` : "Free"}
+                    {book.price > 0 ? `$${Number(book.price).toFixed(0)}` : "Free"}
                   </span>
                   {book.price > 0 && <span className="text-sm text-slate-500">USD · instant download</span>}
                 </div>
+                {/* Read free chapter */}
                 <Link href={`/books/${slug}/read`}
-                  className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-10 py-4 rounded-2xl font-black text-sm text-deep hover:opacity-90 transition-all"
-                  style={{ background: "linear-gradient(90deg, #f59e0b, #fde68a, #f59e0b)" }}>
-                  {book.price > 0 ? "Get the Book" : "Read Free"}
-                  <ArrowRight size={14} />
+                  className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-8 py-3 rounded-xl font-bold text-sm border border-gold/40 text-gold hover:bg-gold/10 transition-all">
+                  Read Chapter 1 Free
+                  <ArrowRight size={13} />
                 </Link>
+                {/* Buy CTA */}
+                {book.price > 0 && (
+                  <button className="w-full sm:w-auto flex items-center justify-center gap-2 px-10 py-4 rounded-2xl font-black text-sm text-deep hover:opacity-90 transition-all"
+                    style={{ background: "linear-gradient(90deg, #f59e0b, #fde68a, #f59e0b)" }}>
+                    Get the Book — ${Number(book.price).toFixed(0)}
+                    <ArrowRight size={14} />
+                  </button>
+                )}
                 <p className="text-xs text-slate-600">
-                  {book.price > 0 ? "PDF · Instant access · No subscription required" : "Available to all readers"}
+                  PDF · Instant access · No subscription required
                 </p>
               </div>
 
