@@ -222,16 +222,23 @@ export async function notifyAllMembers(
 
   const isMusic = content.type === "music";
   const subject = isMusic
-    ? `🎵 New music: ${content.title} · Nouvelle musique: ${content.title}`
-    : `📖 New newsletter: ${content.title} · Nouveau bulletin: ${content.title}`;
+    ? `New music: ${content.title} — Abundance Transmission`
+    : `New transmission: ${content.title} — Abundance Transmission`;
 
   const resend = getResend();
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://abundancetransmission.com";
+
   const results = await Promise.allSettled(
     members.map((member) =>
       resend.emails.send({
-        from: "Niko · Abundance Transmission <niko@abundancetransmission.com>",
-        to: member.email,
+        from:     "Niko · Abundance Transmission <niko@abundancetransmission.com>",
+        to:       member.email,
+        replyTo:  "niko@abundancetransmission.com",
         subject,
+        headers: {
+          "List-Unsubscribe": `<mailto:unsubscribe@abundancetransmission.com>, <${siteUrl}/member>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
         html: generateHTML(member, content),
       })
     )

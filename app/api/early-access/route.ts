@@ -133,7 +133,12 @@ export async function POST(request: NextRequest) {
     await resend.emails.send({
       from:    "Niko · Abundance Transmission <niko@abundancetransmission.com>",
       to:      email,
-      subject: "✦ The transmission has found you — Abundance Transmission",
+      replyTo: "niko@abundancetransmission.com",
+      subject: "You are now a Steward — Abundance Transmission",
+      headers: {
+        "List-Unsubscribe": `<mailto:unsubscribe@abundancetransmission.com>, <${SITE_URL}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
       html:    welcomeHTML(email),
     }).catch((err) => console.error("Welcome email error:", err));
 
