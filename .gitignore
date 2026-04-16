@@ -30,3 +30,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+output/videos/
+output/audio/
+output/final/
+output/schedule-queue.jsonl
