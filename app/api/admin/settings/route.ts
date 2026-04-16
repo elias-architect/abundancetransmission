@@ -1,13 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import { assertAdmin } from "@/lib/admin-auth";
+import { notifyAdmin } from "@/lib/email";
 import { NextResponse, type NextRequest } from "next/server";
-
-async function assertAdmin() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  return profile?.role === "admin" ? user : null;
-}
 
 export async function GET() {
   const user = await assertAdmin();
@@ -17,7 +10,7 @@ export async function GET() {
     `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/settings?select=key,value`,
     {
       headers: {
-        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        apikey:        process.env.SUPABASE_SERVICE_ROLE_KEY!,
         Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
       },
       cache: "no-store",
@@ -44,15 +37,25 @@ export async function POST(request: NextRequest) {
     {
       method: "POST",
       headers: {
-        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+        apikey:         process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        Authorization:  `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
         "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates",
+        Prefer:         "resolution=merge-duplicates",
       },
       body: JSON.stringify(rows),
     }
   );
 
   if (!res.ok) return NextResponse.json({ error: "Failed to save" }, { status: 500 });
+
+  // Confirmation email — fire and forget
+  const keys = Object.keys(body);
+  if (keys.includes("cc_password")) {
+    notifyAdmin(
+      "Command Center Password Updated",
+      `The Command Center access password was changed.\n\nChanged by: ${user.email}`
+    ).catch(() => {});
+  }
+
   return NextResponse.json({ ok: true });
 }

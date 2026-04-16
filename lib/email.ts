@@ -163,6 +163,54 @@ function generateHTML(member: Member, content: ContentItem): string {
 </html>`;
 }
 
+export async function notifyAdmin(subject: string, details: string): Promise<void> {
+  if (!process.env.RESEND_API_KEY) return;
+  const resend = getResend();
+  const now = new Date().toLocaleString("en-CA", { timeZone: "America/Toronto", dateStyle: "full", timeStyle: "short" });
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#07112b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;background:#0d1b36;border-radius:16px;border:1px solid #1a2640;">
+        <tr><td style="padding:24px 32px;border-bottom:1px solid #1a2640;">
+          <table width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td style="color:#c9a84c;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Admin Confirmation</td>
+            <td align="right" style="color:#334155;font-size:11px;">${now}</td>
+          </tr></table>
+        </td></tr>
+        <tr><td style="padding:28px 32px;">
+          <h2 style="color:#ffffff;font-size:20px;font-weight:800;margin:0 0 16px 0;">${subject}</h2>
+          <div style="background:#0a1525;border:1px solid #1a2640;border-left:3px solid #c9a84c;border-radius:0 10px 10px 0;padding:16px 20px;">
+            <p style="color:#94a3b8;font-size:14px;line-height:1.7;margin:0;white-space:pre-line;">${details}</p>
+          </div>
+          <p style="color:#334155;font-size:12px;margin:20px 0 0 0;">
+            This is an automated confirmation from your Abundance Transmission dashboard.
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 32px;border-top:1px solid #1a2640;text-align:center;">
+          <a href="${process.env.NEXT_PUBLIC_SITE_URL}/dash" style="color:#c9a84c;font-size:12px;text-decoration:none;font-weight:700;">
+            Open Dashboard →
+          </a>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  try {
+    await resend.emails.send({
+      from: "Abundance Transmission <niko@abundancetransmission.com>",
+      to:   "niko@abundancetransmission.com",
+      subject: `[Dashboard] ${subject}`,
+      html,
+    });
+  } catch (err) {
+    console.error("notifyAdmin error:", err);
+  }
+}
+
 export async function notifyAllMembers(
   members: Member[],
   content: ContentItem
