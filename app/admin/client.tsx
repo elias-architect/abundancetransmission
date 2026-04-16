@@ -8,11 +8,11 @@ import {
   Loader2, Check, X, ChevronRight, Bell, Lock, Save,
   BarChart3, Activity, Star, Instagram, Heart, MessageCircle, Telescope,
   BookOpen, BookMarked, DollarSign, Globe, RefreshCw,
-  Radio, ChevronUp, ChevronDown, ToggleLeft, ToggleRight
+  Radio, ChevronUp, ChevronDown, ToggleLeft, ToggleRight, Sparkles
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Tab = "overview" | "compose" | "members" | "calibration" | "instagram" | "books" | "radio" | "settings";
+type Tab = "overview" | "compose" | "members" | "calibration" | "instagram" | "books" | "radio" | "settings" | "transmissions";
 type ContentType = "newsletter" | "music" | "video";
 type ContentItem = {
   id: string; type: ContentType; title: string;
@@ -464,14 +464,15 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
   }
 
   const navItems: { id: Tab; icon: React.ReactNode; label: string }[] = [
-    { id: "overview",     icon: <LayoutDashboard size={16} />, label: "Overview" },
-    { id: "compose",      icon: <PenLine size={16} />,         label: "Compose" },
-    { id: "members",      icon: <Users size={16} />,           label: "Members" },
-    { id: "calibration",  icon: <Star size={16} />,            label: "Calibration" },
-    { id: "instagram",    icon: <Instagram size={16} />,       label: "Instagram" },
-    { id: "books",        icon: <BookOpen size={16} />,        label: "Books" },
-    { id: "radio",        icon: <Radio size={16} />,           label: "Radio" },
-    { id: "settings",     icon: <Settings size={16} />,        label: "Settings" },
+    { id: "transmissions", icon: <Sparkles size={16} />,        label: "Transmit" },
+    { id: "overview",      icon: <LayoutDashboard size={16} />, label: "Overview" },
+    { id: "compose",       icon: <PenLine size={16} />,         label: "Compose" },
+    { id: "members",       icon: <Users size={16} />,           label: "Members" },
+    { id: "calibration",   icon: <Star size={16} />,            label: "Calibration" },
+    { id: "instagram",     icon: <Instagram size={16} />,       label: "Instagram" },
+    { id: "books",         icon: <BookOpen size={16} />,        label: "Books" },
+    { id: "radio",         icon: <Radio size={16} />,           label: "Radio" },
+    { id: "settings",      icon: <Settings size={16} />,        label: "Settings" },
   ];
 
   return (
@@ -1286,6 +1287,12 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
                 </div>
               )}
 
+              {tab === "transmissions" && (
+                <div className="w-full">
+                  <TransmissionPanel />
+                </div>
+              )}
+
               {tab === "settings" && (
                 <div className="space-y-6 max-w-lg">
                   <div>
@@ -1356,6 +1363,132 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
           )}
         </main>
       </div>
+    </div>
+  );
+}
+
+// ── Transmission Panel ─────────────────────────────────────────────────────────
+type TransmissionResult = {
+  id: string;
+  blog_post: string;
+  newsletter: string;
+  instagram_caption: string;
+  tiktok_caption: string;
+  audio_url: string | null;
+};
+
+type CopiedKey = "blog" | "newsletter" | "instagram" | "tiktok" | null;
+
+function TransmissionPanel() {
+  const [input, setInput]       = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [result, setResult]     = useState<TransmissionResult | null>(null);
+  const [error, setError]       = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>("instagram");
+  const [copied, setCopied]     = useState<CopiedKey>(null);
+
+  async function generate() {
+    if (!input.trim() || loading) return;
+    setLoading(true); setError(null); setResult(null);
+    try {
+      const res = await fetch("/api/admin/transmissions/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rawInput: input }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setResult(data.transmission);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function copy(text: string, key: CopiedKey) {
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 2000);
+  }
+
+  const toggle = (key: string) => setExpanded(expanded === key ? null : key);
+
+  return (
+    <div className="max-w-2xl">
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-2">
+          <Sparkles size={14} className="text-gold" />
+          <span className="text-xs font-bold uppercase tracking-widest text-gold">Transmission Pipeline</span>
+        </div>
+        <h1 className="text-2xl font-black text-white mb-1">Speak the Vision</h1>
+        <p className="text-sm text-slate-500">Share a transmission. Everything else gets created automatically.</p>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-navy/60 p-6 mb-5">
+        <textarea
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder={"Share the transmission from the Library…\n\ne.g. The soul does not fear death. It fears forgetting. Every struggle you have faced was the Library writing its most important chapters through you."}
+          rows={7}
+          className="w-full bg-transparent text-slate-200 text-sm leading-relaxed placeholder:text-slate-600 resize-none outline-none"
+        />
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/60">
+          <span className="text-xs text-slate-600">{input.length} chars</span>
+          <button
+            onClick={generate}
+            disabled={loading || !input.trim()}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-deep disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all"
+            style={{ background: "linear-gradient(90deg,#f59e0b,#fde68a)" }}
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            {loading ? "Generating…" : "Generate Everything"}
+          </button>
+        </div>
+      </div>
+
+      {error && <div className="rounded-xl border border-red-900/40 bg-red-950/20 p-4 mb-5 text-sm text-red-400">{error}</div>}
+
+      {result && (
+        <div className="space-y-3">
+          {([
+            { id: "instagram", label: "Instagram Caption", text: result.instagram_caption, key: "instagram" as CopiedKey },
+            { id: "tiktok",    label: "TikTok / Reels",    text: result.tiktok_caption,    key: "tiktok"    as CopiedKey },
+            { id: "newsletter",label: "Newsletter",         text: result.newsletter,         key: "newsletter"as CopiedKey },
+            { id: "blog",      label: "Blog Post",         text: result.blog_post,          key: "blog"      as CopiedKey },
+          ]).map(({ id, label, text, key }) => (
+            <div key={id} className="rounded-2xl border border-border bg-navy/60 overflow-hidden">
+              <button onClick={() => toggle(id)}
+                className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
+                <span className="text-xs font-bold uppercase tracking-widest text-gold">{label}</span>
+                {expanded === id ? <ChevronUp size={14} className="text-slate-500" /> : <ChevronDown size={14} className="text-slate-500" />}
+              </button>
+              {expanded === id && (
+                <div className="px-5 pb-5">
+                  <pre className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">{text}</pre>
+                  <button onClick={() => copy(text, key)}
+                    className="mt-4 flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-all">
+                    {copied === key ? <Check size={12} /> : null}
+                    {copied === key ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {result.audio_url && (
+            <div className="rounded-2xl border border-border bg-navy/60 p-5">
+              <div className="text-xs font-bold uppercase tracking-widest text-gold mb-3">Voice Narration</div>
+              <audio controls className="w-full" src={result.audio_url} />
+            </div>
+          )}
+
+          <button onClick={() => { setResult(null); setInput(""); }}
+            className="w-full mt-1 py-3 rounded-xl border border-border text-slate-500 text-sm hover:text-white hover:border-slate-600 transition-all">
+            New Transmission
+          </button>
+        </div>
+      )}
     </div>
   );
 }

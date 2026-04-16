@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "deploy": "npx ts-node --esm scripts/deploy.ts",
+    "deploy:dry": "npx ts-node --esm scripts/deploy.ts --dry-run"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",
