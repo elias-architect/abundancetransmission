@@ -179,14 +179,14 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
 
     let audio_url = tUrl.trim();
 
-    // Upload file to Supabase Storage "tracks" bucket if file selected
+    // Upload file via server-side API (uses service role key)
     if (tFile) {
-      const supabase = createClient();
-      const path = `${Date.now()}-${tFile.name.replace(/\s+/g, "-")}`;
-      const { error: upErr } = await supabase.storage.from("tracks").upload(path, tFile);
-      if (upErr) { setTMsg("Upload failed: " + upErr.message); setTPosting(false); return; }
-      const { data: urlData } = supabase.storage.from("tracks").getPublicUrl(path);
-      audio_url = urlData.publicUrl;
+      const fd = new FormData();
+      fd.append("file", tFile);
+      const upRes = await fetch("/api/admin/tracks/upload", { method: "POST", body: fd });
+      const upData = await upRes.json();
+      if (!upRes.ok) { setTMsg("Upload failed: " + (upData.error ?? "Unknown error")); setTPosting(false); return; }
+      audio_url = upData.url;
     }
 
     if (!audio_url) { setTMsg("Provide a file or URL."); setTPosting(false); return; }
