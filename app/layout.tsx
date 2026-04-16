@@ -5,6 +5,8 @@ import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import { LangProvider } from "@/lib/lang-context";
 import PublicCouncilChat from "@/components/public-council-chat";
+import { PlayerProvider } from "@/lib/player-context";
+import RadioPlayer from "@/components/radio-player";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -52,12 +54,15 @@ export default function RootLayout({
   return (
     <html lang="en" className={`dark ${inter.variable}`}>
       <body className="min-h-screen flex flex-col bg-deep">
-        <LangProvider>
-          <Nav />
-          <main className="flex-1">{children}</main>
-          <Footer />
-          <PublicCouncilChat />
-        </LangProvider>
+        <PlayerProvider>
+          <LangProvider>
+            <Nav />
+            <main className="flex-1 pb-16">{children}</main>
+            <Footer />
+            <RadioPlayer />
+            <PublicCouncilChat />
+          </LangProvider>
+        </PlayerProvider>
       </body>
     </html>
   );

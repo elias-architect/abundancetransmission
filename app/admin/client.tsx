@@ -6,11 +6,12 @@ import {
   FileText, Music, Video, Upload, Link2, Send, Trash2,
   Mail, Download, Play, Eye, EyeOff, TrendingUp, Shield,
   Loader2, Check, X, ChevronRight, Bell, Lock, Save,
-  BarChart3, Activity, Star
+  BarChart3, Activity, Star, Instagram, Heart, MessageCircle, Telescope,
+  BookOpen, BookMarked, DollarSign, Globe, RefreshCw
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Tab = "overview" | "compose" | "members" | "calibration" | "settings";
+type Tab = "overview" | "compose" | "members" | "calibration" | "instagram" | "books" | "settings";
 type ContentType = "newsletter" | "music" | "video";
 type ContentItem = {
   id: string; type: ContentType; title: string;
@@ -119,6 +120,33 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
   const [calPosting,      setCalPosting]      = useState<Record<string, boolean>>({});
   const [calMsg,          setCalMsg]          = useState<Record<string, string>>({});
 
+  // Instagram
+  type IGPost = {
+    id: string; caption?: string; media_type: string;
+    media_url?: string; thumbnail_url?: string; permalink: string;
+    timestamp: string; like_count: number; comments_count: number;
+    reach?: number; impressions?: number; saved?: number;
+  };
+  const [igPosts,      setIgPosts]      = useState<IGPost[]>([]);
+  const [igFollowers,  setIgFollowers]  = useState(0);
+  const [igMediaCount, setIgMediaCount] = useState(0);
+  const [igLoading,    setIgLoading]    = useState(false);
+  const [igError,      setIgError]      = useState("");
+
+  // Books
+  type BookItem = {
+    id: string; slug: string; title: string; tagline: string | null;
+    author_agent: string; author_name: string | null;
+    description: string | null; cover_image_url: string | null;
+    preview_chapter_title: string | null; preview_chapter_content: string | null;
+    chapters: { title: string; content?: string }[];
+    price: number; status: string; created_at: string;
+  };
+  const [books,       setBooks]      = useState<BookItem[]>([]);
+  const [booksLoad,   setBooksLoad]  = useState(false);
+  const [bookAction,  setBookAction] = useState<Record<string, boolean>>({});
+  const [bookMsg,     setBookMsg]    = useState<Record<string, string>>({});
+
   async function loadData() {
     setLoading(true);
     const [analyticsRes, contentRes] = await Promise.all([
@@ -150,6 +178,55 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
 
   useEffect(() => {
     if (tab === "calibration") loadCalibrations();
+  }, [tab]);
+
+  async function loadInstagram() {
+    setIgLoading(true); setIgError("");
+    const res = await fetch("/api/admin/instagram");
+    if (res.ok) {
+      const data = await res.json();
+      setIgPosts(data.posts ?? []);
+      setIgFollowers(data.followers_count ?? 0);
+      setIgMediaCount(data.media_count ?? 0);
+    } else {
+      const data = await res.json();
+      setIgError(data.error ?? "Failed to load Instagram data");
+    }
+    setIgLoading(false);
+  }
+
+  useEffect(() => {
+    if (tab === "instagram") loadInstagram();
+  }, [tab]);
+
+  async function loadBooks() {
+    setBooksLoad(true);
+    const res = await fetch("/api/admin/books");
+    if (res.ok) setBooks(await res.json());
+    setBooksLoad(false);
+  }
+
+  async function handleBookStatus(id: string, status: string) {
+    setBookAction((p) => ({ ...p, [id]: true }));
+    const res = await fetch("/api/admin/books", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status }),
+    });
+    const msg = status === "published" ? "✓ Published" : status === "rejected" ? "✗ Rejected" : "✓ Updated";
+    setBookMsg((p) => ({ ...p, [id]: res.ok ? msg : "Failed" }));
+    setBookAction((p) => ({ ...p, [id]: false }));
+    if (res.ok) loadBooks();
+  }
+
+  async function handleDeleteBook(id: string) {
+    if (!confirm("Delete this book permanently?")) return;
+    await fetch(`/api/admin/books?id=${id}`, { method: "DELETE" });
+    loadBooks();
+  }
+
+  useEffect(() => {
+    if (tab === "books") loadBooks();
   }, [tab]);
 
   async function handlePostCalibrationTrack(req: CalibrationRequest) {
@@ -282,6 +359,8 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
     { id: "compose",      icon: <PenLine size={16} />,         label: "Compose" },
     { id: "members",      icon: <Users size={16} />,           label: "Members" },
     { id: "calibration",  icon: <Star size={16} />,            label: "Calibration" },
+    { id: "instagram",    icon: <Instagram size={16} />,       label: "Instagram" },
+    { id: "books",        icon: <BookOpen size={16} />,        label: "Books" },
     { id: "settings",     icon: <Settings size={16} />,        label: "Settings" },
   ];
 
@@ -699,6 +778,249 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
                                 </a>
                               </div>
                             )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ════ INSTAGRAM ════ */}
+              {tab === "instagram" && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-widest text-gold mb-1">Instagram</div>
+                      <h1 className="text-2xl font-black text-white">@nikopicasso369</h1>
+                    </div>
+                    <button onClick={loadInstagram} className="text-xs text-slate-500 hover:text-gold transition-colors flex items-center gap-1.5">
+                      <Activity size={12} /> Refresh
+                    </button>
+                  </div>
+
+                  {igLoading ? (
+                    <div className="flex justify-center py-24"><Loader2 size={28} className="animate-spin text-gold" /></div>
+                  ) : igError ? (
+                    <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-sm text-red-400">{igError}</div>
+                  ) : (
+                    <>
+                      {/* Account stats */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <StatCard icon={<Users size={16} />}     label="Followers"   value={igFollowers}  color="text-gold" />
+                        <StatCard icon={<Instagram size={16} />} label="Total posts"  value={igMediaCount} color="text-teal" />
+                        <StatCard icon={<Heart size={16} />}     label="Avg likes"
+                          value={igPosts.length ? Math.round(igPosts.reduce((s, p) => s + (p.like_count ?? 0), 0) / igPosts.length) : 0}
+                          color="text-rose-400" sub="last 12 posts" />
+                      </div>
+
+                      {/* Posts grid */}
+                      {igPosts.length === 0 ? (
+                        <div className="rounded-2xl border border-border bg-navy/40 p-12 text-center">
+                          <Instagram size={24} className="text-slate-600 mx-auto mb-3" />
+                          <p className="text-slate-500 text-sm">No posts found.</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {igPosts.map((post) => (
+                            <a key={post.id} href={post.permalink} target="_blank" rel="noopener noreferrer"
+                              className="rounded-2xl border border-border bg-navy/60 overflow-hidden hover:border-gold/30 transition-all group">
+                              {/* Thumbnail */}
+                              <div className="aspect-square bg-deep relative overflow-hidden">
+                                {(post.media_url || post.thumbnail_url) ? (
+                                  <img
+                                    src={post.thumbnail_url ?? post.media_url}
+                                    alt={post.caption?.slice(0, 40) ?? "Post"}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-slate-700">
+                                    <Instagram size={32} />
+                                  </div>
+                                )}
+                                <div className="absolute top-2 right-2">
+                                  <span className="text-xs bg-deep/80 text-slate-400 px-2 py-0.5 rounded-full">
+                                    {post.media_type === "VIDEO" ? "Reel" : post.media_type === "CAROUSEL_ALBUM" ? "Album" : "Photo"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Metrics */}
+                              <div className="p-4">
+                                <div className="flex items-center gap-4 mb-3">
+                                  <span className="flex items-center gap-1 text-xs text-slate-400">
+                                    <Heart size={11} className="text-rose-400" /> {post.like_count ?? 0}
+                                  </span>
+                                  <span className="flex items-center gap-1 text-xs text-slate-400">
+                                    <MessageCircle size={11} className="text-teal" /> {post.comments_count ?? 0}
+                                  </span>
+                                  {post.reach !== undefined && (
+                                    <span className="flex items-center gap-1 text-xs text-slate-400">
+                                      <Telescope size={11} className="text-gold" /> {post.reach}
+                                    </span>
+                                  )}
+                                  {post.saved !== undefined && (
+                                    <span className="flex items-center gap-1 text-xs text-slate-400">
+                                      <Star size={11} className="text-amber-400" /> {post.saved}
+                                    </span>
+                                  )}
+                                </div>
+                                {post.caption && (
+                                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{post.caption}</p>
+                                )}
+                                <p className="text-xs text-slate-700 mt-2">
+                                  {new Date(post.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                </p>
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ════ BOOKS ════ */}
+              {tab === "books" && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-widest text-gold mb-1">Books</div>
+                      <h1 className="text-2xl font-black text-white">Council Library</h1>
+                      <p className="text-sm text-slate-500 mt-1">Review agent-written books before publishing to the site.</p>
+                    </div>
+                    <button onClick={loadBooks} className="text-xs text-slate-500 hover:text-gold transition-colors flex items-center gap-1.5">
+                      <RefreshCw size={12} /> Refresh
+                    </button>
+                  </div>
+
+                  {booksLoad ? (
+                    <div className="flex justify-center py-24"><Loader2 size={28} className="animate-spin text-gold" /></div>
+                  ) : books.length === 0 ? (
+                    <div className="rounded-2xl border border-border bg-navy/40 p-14 text-center">
+                      <BookMarked size={28} className="text-slate-700 mx-auto mb-3" />
+                      <p className="text-slate-500 text-sm">No books yet.</p>
+                      <p className="text-xs text-slate-700 mt-1">Use /write_book in Telegram to have an agent write one.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-5">
+                      {books.map((book) => {
+                        const isPending   = book.status === "pending_review";
+                        const isPublished = book.status === "published";
+                        const isDraft     = book.status === "draft";
+                        const isRejected  = book.status === "rejected";
+                        const statusColor = isPending ? "border-gold/30 bg-gold/5" : isPublished ? "border-teal/30 bg-teal/5" : isRejected ? "border-red-500/20 bg-red-500/5" : "border-border bg-navy/40";
+                        const badgeColor  = isPending ? "bg-gold/10 text-gold border-gold/30" : isPublished ? "bg-teal/10 text-teal border-teal/30" : isRejected ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-border/60 text-slate-400 border-border";
+
+                        return (
+                          <div key={book.id} className={`rounded-2xl border ${statusColor} p-5`}>
+                            <div className="flex gap-5">
+                              {/* Cover thumbnail */}
+                              <div className="w-20 flex-shrink-0">
+                                <div className="aspect-[3/4] rounded-xl overflow-hidden border border-border/40"
+                                  style={{ background: "linear-gradient(135deg,#0a0f1e,#050810)" }}>
+                                  {book.cover_image_url ? (
+                                    <img src={book.cover_image_url} alt={book.title} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <BookOpen size={16} className="text-slate-700" />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                  <div>
+                                    <div className="text-xs text-slate-500 mb-1">
+                                      {book.author_name ?? book.author_agent}
+                                    </div>
+                                    <h3 className="text-base font-black text-white">{book.title}</h3>
+                                    {book.tagline && <p className="text-xs text-slate-400 italic mt-0.5">{book.tagline}</p>}
+                                  </div>
+                                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full border flex-shrink-0 ${badgeColor}`}>
+                                    {isPending ? "Pending Review" : isPublished ? "Published" : isRejected ? "Rejected" : "Draft"}
+                                  </span>
+                                </div>
+
+                                {book.description && (
+                                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-3">
+                                    {book.description.split("\n\n")[0]}
+                                  </p>
+                                )}
+
+                                <div className="flex items-center gap-3 text-xs text-slate-600 mb-4">
+                                  <span className="flex items-center gap-1">
+                                    <BookMarked size={10} /> {book.chapters?.length ?? 0} chapters
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <DollarSign size={10} /> {book.price > 0 ? `$${Number(book.price).toFixed(2)}` : "Free"}
+                                  </span>
+                                  <span>{new Date(book.created_at).toLocaleDateString()}</span>
+                                </div>
+
+                                {/* Preview chapter */}
+                                {book.preview_chapter_content && (
+                                  <details className="mb-4">
+                                    <summary className="text-xs text-gold cursor-pointer hover:underline">
+                                      Preview first chapter
+                                    </summary>
+                                    <div className="mt-3 p-4 rounded-xl bg-deep/60 border border-border/40 max-h-48 overflow-y-auto">
+                                      {book.preview_chapter_content.split("\n\n").map((p: string, i: number) => (
+                                        <p key={i} className="text-xs text-slate-400 leading-relaxed mb-2">{p}</p>
+                                      ))}
+                                    </div>
+                                  </details>
+                                )}
+
+                                {/* Actions */}
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {(isPending || isDraft) && (
+                                    <button
+                                      onClick={() => handleBookStatus(book.id, "published")}
+                                      disabled={bookAction[book.id]}
+                                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal/10 text-teal border border-teal/30 text-xs font-bold hover:bg-teal/20 transition-all disabled:opacity-50">
+                                      {bookAction[book.id] ? <Loader2 size={11} className="animate-spin" /> : <Globe size={11} />}
+                                      Publish
+                                    </button>
+                                  )}
+                                  {isPending && (
+                                    <button
+                                      onClick={() => handleBookStatus(book.id, "rejected")}
+                                      disabled={bookAction[book.id]}
+                                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-border/40 text-slate-400 border border-border text-xs font-bold hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-all disabled:opacity-50">
+                                      <X size={11} /> Reject
+                                    </button>
+                                  )}
+                                  {isPublished && (
+                                    <a href={`/books/${book.slug}`} target="_blank"
+                                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-border/40 text-slate-400 border border-border text-xs font-bold hover:text-white transition-all">
+                                      <Eye size={11} /> View live
+                                    </a>
+                                  )}
+                                  {isRejected && (
+                                    <button
+                                      onClick={() => handleBookStatus(book.id, "pending_review")}
+                                      disabled={bookAction[book.id]}
+                                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-border/40 text-slate-400 border border-border text-xs font-bold hover:text-white transition-all disabled:opacity-50">
+                                      <RefreshCw size={11} /> Restore
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleDeleteBook(book.id)}
+                                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-border/20 text-slate-600 border border-border/40 text-xs font-bold hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all ml-auto">
+                                    <Trash2 size={11} />
+                                  </button>
+                                </div>
+                                {bookMsg[book.id] && (
+                                  <p className={`text-xs mt-2 ${bookMsg[book.id].startsWith("✓") ? "text-teal" : "text-red-400"}`}>
+                                    {bookMsg[book.id]}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         );
                       })}
