@@ -4,6 +4,7 @@ import "./globals.css";
 import Nav from "@/components/nav";
 import Footer from "@/components/footer";
 import { LangProvider } from "@/lib/lang-context";
+import PublicCouncilChat from "@/components/public-council-chat";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -55,6 +56,7 @@ export default function RootLayout({
           <Nav />
           <main className="flex-1">{children}</main>
           <Footer />
+          <PublicCouncilChat />
         </LangProvider>
       </body>
     </html>
