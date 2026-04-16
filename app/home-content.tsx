@@ -1,9 +1,17 @@
 "use client";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import EmailForm from "@/components/email-form";
-import { ChartLine, Brain, Sparkles, ArrowRight, BookOpen, Shield, Cpu } from "lucide-react";
+import { ChartLine, Brain, Sparkles, ArrowRight, BookOpen, Shield, Cpu, Music } from "lucide-react";
 import { useLang } from "@/lib/lang-context";
 import { translations } from "@/lib/translations";
+
+type MusicTrack = { id: string; title: string; description: string | null; external_url: string | null };
+
+function extractSunoId(url: string): string | null {
+  const m = url.match(/suno\.com\/song\/([a-zA-Z0-9-]+)/);
+  return m ? m[1] : null;
+}
 
 const pillarHrefs = ["/arsenal", "/transmission", "/origin"];
 const featureIcons = [
@@ -17,6 +25,13 @@ export default function HomeContent() {
   const { lang } = useLang();
   const h = translations[lang].hero;
   const f = translations[lang].form;
+  const [tracks, setTracks] = useState<MusicTrack[]>([]);
+
+  useEffect(() => {
+    fetch("/api/music").then((r) => r.json()).then((data) => {
+      if (Array.isArray(data)) setTracks(data);
+    }).catch(() => {});
+  }, []);
 
   return (
     <div className="relative">
@@ -83,6 +98,49 @@ export default function HomeContent() {
           </div>
         </div>
       </section>
+
+      {/* Music Player */}
+      {tracks.length > 0 && (
+        <section className="py-16 px-4 border-t border-border/40">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-10 space-y-2">
+              <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-teal">
+                <Music size={14} /> Abundance Transmission Music
+              </div>
+              <h2 className="text-3xl font-bold text-white">Sound &amp; Frequency</h2>
+              <p className="text-slate-400 text-sm">Original transmissions — listen directly below</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {tracks.map((track) => {
+                const songId = track.external_url ? extractSunoId(track.external_url) : null;
+                return (
+                  <div key={track.id} className="rounded-2xl border border-border bg-navy panel-glow overflow-hidden flex flex-col">
+                    {songId ? (
+                      <iframe
+                        src={`https://suno.com/embed/${songId}`}
+                        className="w-full"
+                        style={{ height: 152 }}
+                        allow="autoplay"
+                        title={track.title}
+                      />
+                    ) : (
+                      <div className="h-[152px] flex items-center justify-center bg-border/20">
+                        <Music size={32} className="text-slate-600" />
+                      </div>
+                    )}
+                    <div className="p-4 flex-1 flex flex-col gap-1">
+                      <div className="text-sm font-bold text-white truncate">{track.title}</div>
+                      {track.description && (
+                        <div className="text-xs text-slate-400 line-clamp-2">{track.description}</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Three pillars */}
       <section className="py-16 px-4">

@@ -222,12 +222,22 @@ export default function CommandCenterClient() {
     URL.revokeObjectURL(url);
   }
 
-  function handlePassword(e: React.FormEvent) {
+  async function handlePassword(e: React.FormEvent) {
     e.preventDefault();
-    if (password === "transmission" || password === "enigma369" || password === "abundance") {
-      setUnlocked(true);
-      setPwError(false);
-    } else {
+    try {
+      const res = await fetch("/api/cc-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setUnlocked(true);
+        setPwError(false);
+      } else {
+        setPwError(true);
+      }
+    } catch {
       setPwError(true);
     }
   }
