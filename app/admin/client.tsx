@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   LayoutDashboard, PenLine, Users, Settings, LogOut,
   FileText, Music, Video, Upload, Link2, Send, Trash2,
-  Mail, Download, Play, Eye, TrendingUp, Shield,
+  Mail, Download, Play, Eye, EyeOff, TrendingUp, Shield,
   Loader2, Check, X, ChevronRight, Bell, Lock, Save,
   BarChart3, Activity, Star
 } from "lucide-react";
@@ -104,6 +104,8 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
   const [ccConfirm,     setCcConfirm]     = useState("");
   const [savingPw,      setSavingPw]      = useState(false);
   const [pwMsg,         setPwMsg]         = useState("");
+  const [showPw,        setShowPw]        = useState(false);
+  const [showPwConfirm, setShowPwConfirm] = useState(false);
 
   async function loadData() {
     setLoading(true);
@@ -597,12 +599,24 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
                     </div>
                     <p className="text-xs text-slate-500 mb-5">This is the code members enter to access the Command Center backtest engine.</p>
                     <form onSubmit={handleSavePw} className="space-y-3">
-                      <input type="password" value={ccPassword} onChange={(e) => setCcPassword(e.target.value)}
-                        placeholder="New password" required minLength={6}
-                        className="w-full px-4 py-3 rounded-xl bg-deep border border-border text-white placeholder:text-slate-600 text-sm outline-none focus:border-gold/50 tracking-widest" />
-                      <input type="password" value={ccConfirm} onChange={(e) => setCcConfirm(e.target.value)}
-                        placeholder="Confirm password" required
-                        className="w-full px-4 py-3 rounded-xl bg-deep border border-border text-white placeholder:text-slate-600 text-sm outline-none focus:border-gold/50 tracking-widest" />
+                      <div className="relative">
+                        <input type={showPw ? "text" : "password"} value={ccPassword} onChange={(e) => setCcPassword(e.target.value)}
+                          placeholder="New password" required minLength={6}
+                          className="w-full px-4 py-3 pr-11 rounded-xl bg-deep border border-border text-white placeholder:text-slate-600 text-sm outline-none focus:border-gold/50 tracking-widest" />
+                        <button type="button" onClick={() => setShowPw((v) => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">
+                          {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <input type={showPwConfirm ? "text" : "password"} value={ccConfirm} onChange={(e) => setCcConfirm(e.target.value)}
+                          placeholder="Confirm password" required
+                          className="w-full px-4 py-3 pr-11 rounded-xl bg-deep border border-border text-white placeholder:text-slate-600 text-sm outline-none focus:border-gold/50 tracking-widest" />
+                        <button type="button" onClick={() => setShowPwConfirm((v) => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">
+                          {showPwConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
                       {pwMsg && (
                         <p className={`text-xs ${pwMsg.startsWith("✓") ? "text-teal" : "text-red-400"}`}>{pwMsg}</p>
                       )}
