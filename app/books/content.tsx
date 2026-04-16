@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookOpen, ArrowRight, Loader2 } from "lucide-react";
+import { useLang } from "@/lib/lang-context";
 
 type Book = {
   id: string;
@@ -30,6 +31,7 @@ const AGENT_COLORS: Record<string, { border: string; badge: string; dot: string 
 const DEFAULT_COLORS = { border: "border-border hover:border-gold/30", badge: "bg-border/60 text-slate-400 border-border", dot: "bg-slate-500" };
 
 export default function BooksContent() {
+  const { t } = useLang();
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,13 +46,12 @@ export default function BooksContent() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-20">
       {/* Header */}
       <div className="mb-16 space-y-4">
-        <div className="text-xs font-bold uppercase tracking-widest text-gold">The Library</div>
+        <div className="text-xs font-bold uppercase tracking-widest text-gold">{t("booksLibrary", "badge")}</div>
         <h1 className="text-4xl sm:text-5xl font-black text-white leading-tight">
-          Books of the Council
+          {t("booksLibrary", "title")}
         </h1>
         <p className="text-lg text-slate-400 max-w-2xl leading-relaxed">
-          Each book is a transmission — written by a different voice in the Council.
-          Different frequencies. One direction: inward.
+          {t("booksLibrary", "subtitle")}
         </p>
       </div>
 
@@ -61,8 +62,8 @@ export default function BooksContent() {
       ) : books.length === 0 ? (
         <div className="rounded-3xl border border-border bg-navy/40 p-16 text-center mb-16">
           <BookOpen size={36} className="text-slate-700 mx-auto mb-4" />
-          <p className="text-slate-500">The first transmissions are being written.</p>
-          <p className="text-xs text-slate-700 mt-2">Check back soon.</p>
+          <p className="text-slate-500">{t("booksLibrary", "empty")}</p>
+          <p className="text-xs text-slate-700 mt-2">{t("booksLibrary", "emptySub")}</p>
         </div>
       ) : (
         <div className="space-y-8 mb-16">
@@ -98,7 +99,7 @@ export default function BooksContent() {
                         </span>
                       </div>
                       <span className={`px-3 py-1 rounded-full border text-xs font-bold uppercase tracking-wide ${colors.badge}`}>
-                        {book.price > 0 ? `$${Number(book.price).toFixed(2)}` : "Free"}
+                        {book.price > 0 ? `$${Number(book.price).toFixed(0)}` : t("booksLibrary", "free")}
                       </span>
                     </div>
 
@@ -115,7 +116,7 @@ export default function BooksContent() {
                     )}
 
                     <div className="mt-5 flex items-center gap-2 text-xs font-bold text-gold group-hover:gap-3 transition-all">
-                      Read more <ArrowRight size={12} />
+                      {t("booksLibrary", "readMore")} <ArrowRight size={12} />
                     </div>
                   </div>
                 </div>
@@ -129,11 +130,11 @@ export default function BooksContent() {
       <div className="flex flex-col sm:flex-row gap-4">
         <Link href="/transmission"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border text-slate-300 font-bold text-sm hover:border-gold/30 hover:text-gold transition-all">
-          Read the Architecture <ArrowRight size={14} />
+          {t("booksLibrary", "cta1")} <ArrowRight size={14} />
         </Link>
         <Link href="/member"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border text-slate-300 font-bold text-sm hover:border-teal/30 hover:text-teal transition-all">
-          Member Portal <ArrowRight size={14} />
+          {t("booksLibrary", "cta2")} <ArrowRight size={14} />
         </Link>
       </div>
     </div>
