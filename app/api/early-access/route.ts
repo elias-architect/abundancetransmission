@@ -1,155 +1,172 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { Resend } from "resend";
-
-function getResend() {
-  return new Resend(process.env.RESEND_API_KEY ?? "placeholder");
-}
+import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://abundancetransmission.com";
+const SB_URL   = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SB_KEY   = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-function welcomeHTML(email: string): string {
+function getResend() { return new Resend(process.env.RESEND_API_KEY ?? "placeholder"); }
+function getAdminClient() { return createSupabaseAdmin(SB_URL, SB_KEY, { auth: { autoRefreshToken: false, persistSession: false } }); }
+
+// ── Branded confirmation email ────────────────────────────────────────────────
+function confirmationHTML(confirmUrl: string): string {
   return `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"/></head>
-<body style="margin:0;padding:0;background:#f8f7f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f7f4;padding:40px 16px;">
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Confirm Authentication – Abundance Transmission</title>
+</head>
+<body style="margin:0;padding:0;background:#060d1e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#060d1e;padding:48px 16px;">
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
         <!-- Header -->
-        <tr><td style="background:#07112b;border-radius:16px 16px 0 0;padding:28px 36px;border-bottom:1px solid #1a2640;">
-          <table width="100%" cellpadding="0" cellspacing="0"><tr>
-            <td>
-              <table cellpadding="0" cellspacing="0"><tr>
-                <td style="width:36px;height:36px;background:linear-gradient(135deg,#c9a84c,#92610a);border-radius:8px;text-align:center;vertical-align:middle;">
-                  <span style="color:#07112b;font-weight:900;font-size:18px;line-height:36px;">A</span>
-                </td>
-                <td style="padding-left:12px;color:#fff;font-weight:700;font-size:15px;">Abundance Transmission</td>
-              </tr></table>
-            </td>
-            <td align="right">
-              <span style="background:#c9a84c18;border:1px solid #c9a84c55;color:#c9a84c;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border-radius:20px;">Early Access · Accès anticipé</span>
-            </td>
-          </tr></table>
+        <tr><td style="background:linear-gradient(180deg,#07112b 0%,#050d1f 100%);border-radius:20px 20px 0 0;padding:36px 40px 28px;border-bottom:1px solid #1a2640;text-align:center;">
+          <!-- Logo mark -->
+          <div style="display:inline-block;width:52px;height:52px;background:linear-gradient(135deg,#c9a84c,#92610a);border-radius:14px;text-align:center;line-height:52px;font-size:24px;font-weight:900;color:#07112b;margin-bottom:20px;">A</div>
+          <div style="color:#ffffff;font-size:16px;font-weight:700;letter-spacing:0.5px;margin-bottom:4px;">Abundance Transmission</div>
+          <div style="color:#475569;font-size:11px;letter-spacing:2px;text-transform:uppercase;">Pattern Mastery · AI Edges · Empathic Abundance</div>
         </td></tr>
 
-        <!-- Hero -->
-        <tr><td style="background:#0d1b36;padding:40px 36px 28px 36px;">
-          <p style="color:#c9a84c;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 16px 0;">The transmission has found you</p>
-          <h1 style="color:#ffffff;font-size:28px;font-weight:900;margin:0 0 20px 0;line-height:1.3;">
-            You are now a Steward<br/>of Abundance Transmission
-          </h1>
-          <p style="color:#94a3b8;font-size:15px;line-height:1.8;margin:0 0 16px 0;">
-            Welcome. You have joined a private frequency — a space where pattern mastery, AI edges, and empathic abundance converge into something real.
-          </p>
-          <p style="color:#94a3b8;font-size:15px;line-height:1.8;margin:0 0 28px 0;">
-            Early stewards receive direct access to the Command Center, exclusive transmissions, and tools designed to align your mind with abundance at every level.
-          </p>
-
-          <hr style="border:none;border-top:1px solid #1a2640;margin:0 0 28px 0;"/>
-
-          <!-- FR -->
-          <p style="color:#c9a84c;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin:0 0 16px 0;">La transmission vous a trouvé</p>
-          <p style="color:#64748b;font-size:14px;line-height:1.8;margin:0 0 28px 0;">
-            Bienvenue. Vous avez rejoint une fréquence privée — un espace où la maîtrise des patterns, les avantages de l'IA et l'abondance empathique convergent vers quelque chose de réel. Les premiers gardiens reçoivent un accès direct au Command Center et aux transmissions exclusives.
-          </p>
-
-          <hr style="border:none;border-top:1px solid #1a2640;margin:0 0 28px 0;"/>
+        <!-- Hero band -->
+        <tr><td style="background:#07112b;padding:0 40px;">
+          <div style="border-left:3px solid #c9a84c;padding:20px 0 20px 24px;margin:32px 0;">
+            <div style="color:#c9a84c;font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:10px;">Authentication Request</div>
+            <h1 style="color:#ffffff;font-size:28px;font-weight:900;margin:0 0 10px;line-height:1.25;">One step to enter<br/>the transmission.</h1>
+            <p style="color:#64748b;font-size:14px;margin:0;line-height:1.7;">Click the button below to confirm your access. This link expires in 24 hours.</p>
+          </div>
         </td></tr>
 
-        <!-- What's coming -->
-        <tr><td style="background:#0d1b36;padding:0 36px 32px 36px;">
-          <table width="100%" cellpadding="0" cellspacing="0">
-            <tr><td style="background:#0a1525;border:1px solid #1a2640;border-left:3px solid #c9a84c;border-radius:0 10px 10px 0;padding:16px 20px;margin-bottom:12px;">
-              <p style="color:#64748b;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;margin:0 0 8px 0;">What you will receive · Ce que vous recevrez</p>
-              <table width="100%" cellpadding="0" cellspacing="4">
-                <tr><td style="color:#e2e8f0;font-size:14px;padding:3px 0;">✦ Exclusive newsletters &amp; transmissions</td></tr>
-                <tr><td style="color:#e2e8f0;font-size:14px;padding:3px 0;">✦ Command Center trading system access</td></tr>
-                <tr><td style="color:#e2e8f0;font-size:14px;padding:3px 0;">✦ Original music calibration tracks</td></tr>
-                <tr><td style="color:#e2e8f0;font-size:14px;padding:3px 0;">✦ Soul Calibration frequency sessions</td></tr>
-                <tr><td style="color:#e2e8f0;font-size:14px;padding:3px 0;">✦ AI tools &amp; pattern mastery resources</td></tr>
-              </table>
-            </td></tr>
-          </table>
-        </td></tr>
+        <!-- Body -->
+        <tr><td style="background:#07112b;padding:0 40px 36px;">
 
-        <!-- CTA -->
-        <tr><td style="background:#0d1b36;padding:0 36px 36px 36px;text-align:center;">
-          <a href="${SITE_URL}" style="display:inline-block;background:#c9a84c;color:#07112b;font-weight:800;font-size:15px;padding:16px 40px;border-radius:12px;text-decoration:none;letter-spacing:0.3px;">
-            ✦ Enter the Transmission
-          </a>
-          <p style="color:#475569;font-size:12px;margin:16px 0 0 0;">
-            We will be in touch soon with your full access details.
-          </p>
-        </td></tr>
+          <!-- CTA button -->
+          <div style="text-align:center;margin-bottom:36px;">
+            <a href="${confirmUrl}"
+               style="display:inline-block;background:linear-gradient(90deg,#c9a84c,#e8c96a,#c9a84c);color:#07112b;font-weight:900;font-size:15px;padding:18px 48px;border-radius:14px;text-decoration:none;letter-spacing:0.4px;">
+              Confirm Your Access →
+            </a>
+            <p style="color:#334155;font-size:11px;margin:14px 0 0;letter-spacing:0.3px;">
+              Button not working? <a href="${confirmUrl}" style="color:#c9a84c;text-decoration:none;">Copy this link</a>
+            </p>
+          </div>
 
-        <!-- Signature -->
-        <tr><td style="background:#0d1b36;padding:0 36px 36px 36px;border-top:1px solid #1a2640;">
-          <p style="color:#475569;font-size:13px;line-height:1.6;margin:24px 0 0 0;">
-            The transmission continues.<br/>
-            <span style="color:#c9a84c;font-weight:700;">— Niko</span><br/>
-            <span style="font-size:11px;color:#334155;">Pisces ♓ · Feb 27, 1989 · Abundance Transmission</span>
-          </p>
+          <!-- Divider -->
+          <div style="height:1px;background:linear-gradient(90deg,transparent,#1a2640,transparent);margin-bottom:32px;"></div>
+
+          <!-- What you get -->
+          <div style="margin-bottom:32px;">
+            <div style="color:#475569;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;">After confirming, you will have access to</div>
+            <table cellpadding="0" cellspacing="0" width="100%">
+              ${[
+                ["✦", "Member Portal", "Exclusive newsletters, transmissions &amp; resources"],
+                ["♫", "Soul Music", "Original frequency tracks created for your vibration"],
+                ["◎", "Soul Calibration", "Personalized frequency sessions based on your birth data"],
+                ["⌘", "Command Center", "Live strategy engine — Enigma 369 in action"],
+              ].map(([icon, title, desc]) => `
+              <tr><td style="padding:8px 0;">
+                <table cellpadding="0" cellspacing="0"><tr>
+                  <td style="width:32px;vertical-align:top;padding-top:2px;color:#c9a84c;font-size:14px;">${icon}</td>
+                  <td>
+                    <div style="color:#e2e8f0;font-size:13px;font-weight:700;">${title}</div>
+                    <div style="color:#475569;font-size:12px;margin-top:2px;">${desc}</div>
+                  </td>
+                </tr></table>
+              </td></tr>`).join("")}
+            </table>
+          </div>
+
+          <!-- Signature -->
+          <div style="border-top:1px solid #1a2640;padding-top:24px;">
+            <p style="color:#475569;font-size:13px;line-height:1.7;margin:0;">
+              The transmission continues.<br/>
+              <span style="color:#c9a84c;font-weight:700;">— Niko</span><br/>
+              <span style="font-size:11px;color:#334155;">Pisces ♓ · Feb 27, 1989 · Abundance Transmission</span>
+            </p>
+          </div>
+
         </td></tr>
 
         <!-- Footer -->
-        <tr><td style="background:#07112b;border-radius:0 0 16px 16px;padding:20px 36px;text-align:center;border-top:1px solid #1a2640;">
-          <p style="color:#334155;font-size:11px;margin:0;line-height:1.8;">
-            You signed up for early access at Abundance Transmission.<br/>
-            Vous vous êtes inscrit pour un accès anticipé à Abundance Transmission.<br/>
-            <a href="${SITE_URL}" style="color:#475569;">abundancetransmission.com</a>
+        <tr><td style="background:#050810;border-radius:0 0 20px 20px;padding:20px 40px;border-top:1px solid #0f1f3a;">
+          <p style="color:#1e3a5f;font-size:11px;margin:0;line-height:1.8;text-align:center;">
+            You requested access to Abundance Transmission.<br/>
+            If this wasn't you, you can safely ignore this email.<br/>
+            <a href="${SITE_URL}" style="color:#334155;text-decoration:none;">abundancetransmission.com</a>
           </p>
         </td></tr>
 
       </table>
     </td></tr>
   </table>
-</body></html>`;
+
+</body>
+</html>`;
 }
 
+// ── POST ──────────────────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   const { email } = await request.json();
   if (!email || !email.includes("@")) {
     return NextResponse.json({ error: "Valid email required" }, { status: 400 });
   }
 
-  // Save to waitlist
-  const saveRes = await fetch(
-    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/waitlist`,
-    {
-      method: "POST",
-      headers: {
-        apikey:         process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        Authorization:  `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
-        "Content-Type": "application/json",
-        Prefer:         "resolution=ignore-duplicates",
-      },
-      body: JSON.stringify({ email }),
-    }
-  );
+  // 1. Save to waitlist (ignore duplicates)
+  await fetch(`${SB_URL}/rest/v1/waitlist`, {
+    method: "POST",
+    headers: {
+      apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`,
+      "Content-Type": "application/json", Prefer: "resolution=ignore-duplicates",
+    },
+    body: JSON.stringify({ email }),
+  }).catch(() => {});
 
-  // Send welcome email
-  if (process.env.RESEND_API_KEY) {
-    const resend = getResend();
-    await resend.emails.send({
-      from:    "Niko · Abundance Transmission <niko@abundancetransmission.com>",
-      to:      email,
-      replyTo: "niko@abundancetransmission.com",
-      subject: "You are now a Steward — Abundance Transmission",
-      headers: {
-        "List-Unsubscribe": `<mailto:unsubscribe@abundancetransmission.com>, <${SITE_URL}>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-      },
-      html:    welcomeHTML(email),
-    }).catch((err) => console.error("Welcome email error:", err));
+  // 2. Generate a Supabase magic-link so we control the email HTML
+  const adminClient = getAdminClient();
+  const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+    type: "magiclink",
+    email,
+    options: { redirectTo: `${SITE_URL}/api/auth/callback?next=/member` },
+  });
 
-    // Notify Niko
-    await resend.emails.send({
-      from:    "Abundance Transmission <niko@abundancetransmission.com>",
-      to:      "niko@abundancetransmission.com",
-      subject: `[New Steward] ${email} joined the waitlist`,
-      html:    `<p style="font-family:sans-serif;"><strong>${email}</strong> just joined the Abundance Transmission early access list.</p>`,
-    }).catch(() => {});
+  if (linkError || !linkData?.properties?.action_link) {
+    console.error("generateLink error:", linkError);
+    // Still return ok — user can use Magic Link on /login
+    return NextResponse.json({ ok: true, fallback: true });
   }
+
+  const confirmUrl = linkData.properties.action_link;
+
+  if (!process.env.RESEND_API_KEY) {
+    return NextResponse.json({ ok: true });
+  }
+
+  const resend = getResend();
+
+  // 3. Send branded confirmation email
+  await resend.emails.send({
+    from:    "Niko · Abundance Transmission <niko@abundancetransmission.com>",
+    to:      email,
+    replyTo: "niko@abundancetransmission.com",
+    subject: "Confirm Authentication – Abundance Transmission",
+    headers: {
+      "List-Unsubscribe": `<mailto:unsubscribe@abundancetransmission.com>, <${SITE_URL}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
+    html: confirmationHTML(confirmUrl),
+  }).catch((err) => console.error("Confirmation email error:", err));
+
+  // 4. Notify Niko
+  await resend.emails.send({
+    from:    "Abundance Transmission <niko@abundancetransmission.com>",
+    to:      "niko@abundancetransmission.com",
+    subject: `[New Signup] ${email}`,
+    html:    `<p style="font-family:sans-serif"><strong>${email}</strong> just signed up — confirmation email sent.</p>`,
+  }).catch(() => {});
 
   return NextResponse.json({ ok: true });
 }
