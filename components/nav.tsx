@@ -19,6 +19,7 @@ export default function Nav() {
     { href: "/transmission",   label: n.transmission },
     { href: "/books",          label: n.books },
     { href: "/arsenal",        label: n.arsenal },
+    { href: "/automation",     label: lang === "en" ? "Automation" : "Automatisation" },
     { href: "/command-center", label: n.commandCenter },
     { href: "/vault",          label: n.vault },
   ];
