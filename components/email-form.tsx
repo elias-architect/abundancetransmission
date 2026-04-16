@@ -1,5 +1,5 @@
 "use client";
-import { useForm, ValidationError } from "@formspree/react";
+import { useState } from "react";
 import { Send, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,9 +14,35 @@ export default function EmailForm({
   ctaText?: string;
   dark?: boolean;
 }) {
-  const [state, handleSubmit] = useForm("mdayaldk");
+  const [email, setEmail]       = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [succeeded, setSucceeded]   = useState(false);
+  const [error, setError]           = useState("");
 
-  if (state.succeeded) {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await fetch("/api/early-access", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ email }),
+      });
+      if (res.ok) {
+        setSucceeded(true);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Something went wrong. Please try again.");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (succeeded) {
     return (
       <div className="flex items-center gap-3 py-4">
         <CheckCircle size={20} className="text-emerald flex-shrink-0" />
@@ -39,6 +65,8 @@ export default function EmailForm({
           type="email"
           name="email"
           required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           placeholder={placeholder}
           className={cn(
             "flex-1 px-4 py-3 rounded-lg text-sm border outline-none transition-all",
@@ -49,10 +77,10 @@ export default function EmailForm({
         />
         <button
           type="submit"
-          disabled={state.submitting}
+          disabled={submitting}
           className="px-5 py-3 rounded-lg bg-gold text-deep font-bold text-sm flex items-center gap-2 hover:bg-amber-400 transition-all disabled:opacity-60 whitespace-nowrap"
         >
-          {state.submitting ? (
+          {submitting ? (
             <span className="w-4 h-4 border-2 border-deep/30 border-t-deep rounded-full animate-spin" />
           ) : (
             <Send size={14} />
@@ -60,7 +88,7 @@ export default function EmailForm({
           {ctaText}
         </button>
       </div>
-      <ValidationError errors={state.errors} className="text-xs text-red-400" />
+      {error && <p className="text-xs text-red-400">{error}</p>}
     </form>
   );
 }
