@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Tab = "overview" | "compose" | "members" | "settings";
+type Tab = "overview" | "compose" | "members" | "calibration" | "settings";
 type ContentType = "newsletter" | "music" | "video";
 type ContentItem = {
   id: string; type: ContentType; title: string;
@@ -107,6 +107,18 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
   const [showPw,        setShowPw]        = useState(false);
   const [showPwConfirm, setShowPwConfirm] = useState(false);
 
+  // Calibration
+  type CalibrationRequest = {
+    id: string; title: string; description: string | null;
+    calibration_user_id: string; calibration_status: string;
+    external_url: string | null; created_at: string;
+  };
+  const [calibrations,    setCalibrations]    = useState<CalibrationRequest[]>([]);
+  const [calLoading,      setCalLoading]      = useState(false);
+  const [calUrls,         setCalUrls]         = useState<Record<string, string>>({});
+  const [calPosting,      setCalPosting]      = useState<Record<string, boolean>>({});
+  const [calMsg,          setCalMsg]          = useState<Record<string, string>>({});
+
   async function loadData() {
     setLoading(true);
     const [analyticsRes, contentRes] = await Promise.all([
@@ -125,6 +137,35 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
   }
 
   useEffect(() => { loadData(); }, []);
+
+  async function loadCalibrations() {
+    setCalLoading(true);
+    const res = await fetch("/api/admin/calibration");
+    if (res.ok) {
+      const data = await res.json();
+      setCalibrations(Array.isArray(data) ? data : []);
+    }
+    setCalLoading(false);
+  }
+
+  useEffect(() => {
+    if (tab === "calibration") loadCalibrations();
+  }, [tab]);
+
+  async function handlePostCalibrationTrack(req: CalibrationRequest) {
+    const url = calUrls[req.id];
+    if (!url) return;
+    setCalPosting((p) => ({ ...p, [req.id]: true }));
+    const res = await fetch("/api/admin/calibration", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ request_id: req.id, external_url: url, calibration_user_id: req.calibration_user_id }),
+    });
+    const data = await res.json();
+    setCalMsg((p) => ({ ...p, [req.id]: res.ok ? "✓ Track posted — member notified" : (data.error ?? "Failed") }));
+    setCalPosting((p) => ({ ...p, [req.id]: false }));
+    if (res.ok) loadCalibrations();
+  }
 
   async function handleLogout() {
     const supabase = createClient();
@@ -237,10 +278,11 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
   }
 
   const navItems: { id: Tab; icon: React.ReactNode; label: string }[] = [
-    { id: "overview", icon: <LayoutDashboard size={16} />, label: "Overview" },
-    { id: "compose",  icon: <PenLine size={16} />,         label: "Compose" },
-    { id: "members",  icon: <Users size={16} />,           label: "Members" },
-    { id: "settings", icon: <Settings size={16} />,        label: "Settings" },
+    { id: "overview",     icon: <LayoutDashboard size={16} />, label: "Overview" },
+    { id: "compose",      icon: <PenLine size={16} />,         label: "Compose" },
+    { id: "members",      icon: <Users size={16} />,           label: "Members" },
+    { id: "calibration",  icon: <Star size={16} />,            label: "Calibration" },
+    { id: "settings",     icon: <Settings size={16} />,        label: "Settings" },
   ];
 
   return (
@@ -584,6 +626,87 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
               )}
 
               {/* ════ SETTINGS ════ */}
+              {tab === "calibration" && (
+                <div className="space-y-6 max-w-3xl">
+                  <div>
+                    <div className="text-xs font-bold uppercase tracking-widest text-gold mb-1">Soul Calibration</div>
+                    <h1 className="text-2xl font-black text-white">Calibration Requests</h1>
+                    <p className="text-sm text-slate-400 mt-1">Members who requested personalized frequency tracks. Paste a Suno URL to deliver their tracks.</p>
+                  </div>
+
+                  {calLoading ? (
+                    <div className="flex justify-center py-20"><Loader2 size={24} className="animate-spin text-gold" /></div>
+                  ) : calibrations.length === 0 ? (
+                    <div className="rounded-2xl border border-border bg-navy/40 p-12 text-center">
+                      <Star size={24} className="text-slate-600 mx-auto mb-3" />
+                      <div className="text-slate-500 text-sm">No calibration requests yet.</div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {calibrations.map((req) => {
+                        const isPending  = req.calibration_status === "pending";
+                        const isDelivered = req.calibration_status === "ready" || req.calibration_status === "approved";
+                        return (
+                          <div key={req.id} className={`rounded-2xl border ${isPending ? "border-gold/30 bg-gold/5" : "border-border bg-navy/40"} p-5`}>
+                            <div className="flex items-start justify-between gap-4 mb-3">
+                              <div>
+                                <div className="text-sm font-bold text-white">{req.title}</div>
+                                {req.description && <div className="text-xs text-slate-400 mt-1 leading-relaxed">{req.description}</div>}
+                                <div className="text-xs text-slate-600 mt-1">{new Date(req.created_at).toLocaleString()}</div>
+                              </div>
+                              <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${
+                                isPending   ? "bg-gold/10 text-gold border border-gold/30" :
+                                isDelivered ? "bg-teal/10 text-teal border border-teal/30" :
+                                "bg-border/60 text-slate-400"
+                              }`}>
+                                {isPending ? "Pending" : isDelivered ? "Delivered" : req.calibration_status}
+                              </span>
+                            </div>
+
+                            {isPending && (
+                              <div className="space-y-2">
+                                <div className="text-xs font-semibold text-slate-400">Paste Suno track URL:</div>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="url"
+                                    value={calUrls[req.id] ?? ""}
+                                    onChange={(e) => setCalUrls((p) => ({ ...p, [req.id]: e.target.value }))}
+                                    placeholder="https://suno.com/song/..."
+                                    className="flex-1 px-3 py-2.5 rounded-xl bg-deep border border-border text-white placeholder:text-slate-600 text-xs outline-none focus:border-gold/50 transition-colors"
+                                  />
+                                  <button
+                                    onClick={() => handlePostCalibrationTrack(req)}
+                                    disabled={calPosting[req.id] || !calUrls[req.id]}
+                                    className="px-4 py-2.5 rounded-xl bg-gold text-deep text-xs font-black hover:bg-amber-400 transition-all disabled:opacity-50 flex items-center gap-1.5 flex-shrink-0"
+                                  >
+                                    {calPosting[req.id] ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                                    {calPosting[req.id] ? "..." : "Deliver"}
+                                  </button>
+                                </div>
+                                {calMsg[req.id] && (
+                                  <p className={`text-xs ${calMsg[req.id].startsWith("✓") ? "text-teal" : "text-red-400"}`}>
+                                    {calMsg[req.id]}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
+                            {isDelivered && req.external_url && (
+                              <div className="text-xs text-teal flex items-center gap-1.5 mt-1">
+                                <Check size={12} /> Track delivered
+                                <a href={req.external_url} target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-teal ml-2 underline">
+                                  {req.external_url.substring(0, 50)}...
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {tab === "settings" && (
                 <div className="space-y-6 max-w-lg">
                   <div>
