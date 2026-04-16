@@ -47,7 +47,7 @@ export default async function BookReadPage({ params }: { params: Promise<{ slug:
             <ArrowLeft size={11} /> Back to book
           </Link>
           <span className="text-xs text-slate-600 font-mono hidden sm:block">{book.title}</span>
-          <Link href={`/books/${slug}`}
+          <Link href={`/books/${slug}#get-book`}
             className="text-xs font-bold text-gold hover:text-amber-300 transition-colors">
             Get the full book →
           </Link>
@@ -137,10 +137,10 @@ export default async function BookReadPage({ params }: { params: Promise<{ slug:
               : "Discover what this transmission will open in you."}
           </p>
 
-          <Link href={`/books/${slug}`}
+          <Link href={`/books/${slug}#get-book`}
             className="inline-flex items-center gap-3 px-10 py-4 rounded-2xl font-black text-sm text-deep hover:opacity-90 transition-all"
             style={{ background: "linear-gradient(90deg, #f59e0b, #fde68a, #f59e0b)" }}>
-            Read More <ArrowRight size={14} />
+            Get the Full Book <ArrowRight size={14} />
           </Link>
 
           <p className="text-xs text-slate-700">

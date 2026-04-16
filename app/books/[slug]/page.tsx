@@ -134,7 +134,7 @@ export default async function BookPage({ params }: { params: Promise<{ slug: str
               )}
 
               {/* Price + CTA */}
-              <div className="pt-4 space-y-3">
+              <div id="get-book" className="pt-4 space-y-3">
                 <div className="flex items-baseline gap-3">
                   <span className="text-3xl font-black text-white">
                     {book.price > 0 ? `$${Number(book.price).toFixed(2)}` : "Free"}
