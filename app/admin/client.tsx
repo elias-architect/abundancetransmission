@@ -7,11 +7,12 @@ import {
   Mail, Download, Play, Eye, EyeOff, TrendingUp, Shield,
   Loader2, Check, X, ChevronRight, Bell, Lock, Save,
   BarChart3, Activity, Star, Instagram, Heart, MessageCircle, Telescope,
-  BookOpen, BookMarked, DollarSign, Globe, RefreshCw
+  BookOpen, BookMarked, DollarSign, Globe, RefreshCw,
+  Radio, ChevronUp, ChevronDown, ToggleLeft, ToggleRight
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Tab = "overview" | "compose" | "members" | "calibration" | "instagram" | "books" | "settings";
+type Tab = "overview" | "compose" | "members" | "calibration" | "instagram" | "books" | "radio" | "settings";
 type ContentType = "newsletter" | "music" | "video";
 type ContentItem = {
   id: string; type: ContentType; title: string;
@@ -146,6 +147,98 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
   const [booksLoad,   setBooksLoad]  = useState(false);
   const [bookAction,  setBookAction] = useState<Record<string, boolean>>({});
   const [bookMsg,     setBookMsg]    = useState<Record<string, string>>({});
+
+  // Radio
+  type TrackItem = {
+    id: string; title: string; artist: string;
+    audio_url: string; cover_url: string | null;
+    active: boolean; sort_order: number; created_at: string;
+  };
+  const [tracks,       setAdminTracks]  = useState<TrackItem[]>([]);
+  const [tracksLoading,setTracksLoading]= useState(false);
+  const [tTitle,       setTTitle]       = useState("");
+  const [tArtist,      setTArtist]      = useState("");
+  const [tUrl,         setTUrl]         = useState("");
+  const [tCover,       setTCover]       = useState("");
+  const [tFile,        setTFile]        = useState<File | null>(null);
+  const [tPosting,     setTPosting]     = useState(false);
+  const [tMsg,         setTMsg]         = useState("");
+  const trackFileRef = useRef<HTMLInputElement>(null);
+
+  async function loadTracks() {
+    setTracksLoading(true);
+    const res = await fetch("/api/admin/tracks");
+    if (res.ok) setAdminTracks(await res.json());
+    setTracksLoading(false);
+  }
+
+  async function handleAddTrack(e: React.FormEvent) {
+    e.preventDefault();
+    if (!tTitle.trim()) return;
+    setTPosting(true); setTMsg("");
+
+    let audio_url = tUrl.trim();
+
+    // Upload file to Supabase Storage "tracks" bucket if file selected
+    if (tFile) {
+      const supabase = createClient();
+      const path = `${Date.now()}-${tFile.name.replace(/\s+/g, "-")}`;
+      const { error: upErr } = await supabase.storage.from("tracks").upload(path, tFile);
+      if (upErr) { setTMsg("Upload failed: " + upErr.message); setTPosting(false); return; }
+      const { data: urlData } = supabase.storage.from("tracks").getPublicUrl(path);
+      audio_url = urlData.publicUrl;
+    }
+
+    if (!audio_url) { setTMsg("Provide a file or URL."); setTPosting(false); return; }
+
+    const res = await fetch("/api/admin/tracks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: tTitle, artist: tArtist || "Abundance Transmission", audio_url, cover_url: tCover || null }),
+    });
+    const data = await res.json();
+    setTPosting(false);
+    if (res.ok) {
+      setTMsg("✓ Track added");
+      setTTitle(""); setTArtist(""); setTUrl(""); setTCover(""); setTFile(null);
+      if (trackFileRef.current) trackFileRef.current.value = "";
+      loadTracks();
+      setTimeout(() => setTMsg(""), 3000);
+    } else {
+      setTMsg("Error: " + (data.error ?? "Failed"));
+    }
+  }
+
+  async function handleToggleTrack(id: string, active: boolean) {
+    await fetch("/api/admin/tracks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, active: !active }),
+    });
+    loadTracks();
+  }
+
+  async function handleDeleteTrack(id: string) {
+    if (!confirm("Remove this track from the radio?")) return;
+    await fetch(`/api/admin/tracks?id=${id}`, { method: "DELETE" });
+    loadTracks();
+  }
+
+  async function handleReorderTrack(id: string, direction: "up" | "down") {
+    const idx = tracks.findIndex((t) => t.id === id);
+    if (idx < 0) return;
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= tracks.length) return;
+    const a = tracks[idx];
+    const b = tracks[swapIdx];
+    await Promise.all([
+      fetch("/api/admin/tracks", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: a.id, sort_order: b.sort_order }) }),
+      fetch("/api/admin/tracks", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: b.id, sort_order: a.sort_order }) }),
+    ]);
+    loadTracks();
+  }
+
+  useEffect(() => { if (tab === "radio") loadTracks(); }, [tab]);
 
   async function loadData() {
     setLoading(true);
@@ -361,6 +454,7 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
     { id: "calibration",  icon: <Star size={16} />,            label: "Calibration" },
     { id: "instagram",    icon: <Instagram size={16} />,       label: "Instagram" },
     { id: "books",        icon: <BookOpen size={16} />,        label: "Books" },
+    { id: "radio",        icon: <Radio size={16} />,           label: "Radio" },
     { id: "settings",     icon: <Settings size={16} />,        label: "Settings" },
   ];
 
@@ -701,6 +795,153 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* ════ RADIO ════ */}
+              {tab === "radio" && (
+                <div className="space-y-8 max-w-3xl">
+                  <div>
+                    <div className="text-xs font-bold uppercase tracking-widest text-gold mb-1">Radio</div>
+                    <h1 className="text-2xl font-black text-white">Home Radio Playlist</h1>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Upload MP3 files or paste direct audio URLs. Max {18} tracks. Active tracks play automatically for all visitors.
+                    </p>
+                  </div>
+
+                  {/* ── Add track form ── */}
+                  <div className="rounded-2xl border border-border bg-navy/60 p-6">
+                    <div className="text-xs font-bold uppercase tracking-widest text-gold mb-4">Add a Track</div>
+                    <form onSubmit={handleAddTrack} className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1.5 font-semibold uppercase tracking-wide">Track Title *</label>
+                          <input value={tTitle} onChange={(e) => setTTitle(e.target.value)} required
+                            placeholder="Sovereign Frequency Vol.1"
+                            className="w-full px-4 py-2.5 rounded-xl bg-deep border border-border text-white placeholder:text-slate-600 text-sm outline-none focus:border-gold/50" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1.5 font-semibold uppercase tracking-wide">Artist</label>
+                          <input value={tArtist} onChange={(e) => setTArtist(e.target.value)}
+                            placeholder="Abundance Transmission"
+                            className="w-full px-4 py-2.5 rounded-xl bg-deep border border-border text-white placeholder:text-slate-600 text-sm outline-none focus:border-gold/50" />
+                        </div>
+                      </div>
+
+                      {/* Upload file OR paste URL */}
+                      <div className="rounded-xl border border-border/60 bg-deep/60 p-4 space-y-3">
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Audio Source — pick one</div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1.5 font-semibold uppercase tracking-wide flex items-center gap-1.5">
+                            <Upload size={11} /> Upload MP3 / WAV
+                          </label>
+                          <input ref={trackFileRef} type="file" accept="audio/*"
+                            onChange={(e) => { setTFile(e.target.files?.[0] ?? null); if (e.target.files?.[0]) setTUrl(""); }}
+                            className="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-gold/10 file:text-gold hover:file:bg-gold/20 cursor-pointer" />
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-600">
+                          <div className="flex-1 h-px bg-border/60" /> or <div className="flex-1 h-px bg-border/60" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1.5 font-semibold uppercase tracking-wide flex items-center gap-1.5">
+                            <Link2 size={11} /> Direct Audio URL (.mp3, .wav, .ogg)
+                          </label>
+                          <input value={tUrl} onChange={(e) => { setTUrl(e.target.value); if (e.target.value) setTFile(null); }}
+                            placeholder="https://..."
+                            className="w-full px-4 py-2.5 rounded-xl bg-deep border border-border text-white placeholder:text-slate-600 text-sm outline-none focus:border-gold/50" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs text-slate-500 mb-1.5 font-semibold uppercase tracking-wide">Cover Image URL (optional)</label>
+                        <input value={tCover} onChange={(e) => setTCover(e.target.value)}
+                          placeholder="https://... (jpg/png)"
+                          className="w-full px-4 py-2.5 rounded-xl bg-deep border border-border text-white placeholder:text-slate-600 text-sm outline-none focus:border-gold/50" />
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <button type="submit" disabled={tPosting || tracks.length >= 18}
+                          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gold text-deep font-bold text-sm hover:bg-amber-400 transition-all disabled:opacity-50">
+                          {tPosting ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                          {tPosting ? "Adding..." : "Add to Playlist"}
+                        </button>
+                        {tracks.length >= 18 && (
+                          <span className="text-xs text-amber-500">Playlist full (18/18). Remove a track first.</span>
+                        )}
+                        {tMsg && (
+                          <span className={`text-xs font-semibold ${tMsg.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>{tMsg}</span>
+                        )}
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* ── Track list ── */}
+                  <div className="rounded-2xl border border-border bg-navy/60 overflow-hidden">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-border/60">
+                      <div className="text-xs font-bold uppercase tracking-widest text-gold">
+                        Playlist — {tracks.filter(t => t.active).length} active / {tracks.length} total
+                      </div>
+                      <button onClick={loadTracks} className="text-slate-600 hover:text-gold transition-colors">
+                        <RefreshCw size={13} />
+                      </button>
+                    </div>
+
+                    {tracksLoading ? (
+                      <div className="flex justify-center py-12">
+                        <Loader2 size={22} className="animate-spin text-gold" />
+                      </div>
+                    ) : tracks.length === 0 ? (
+                      <div className="text-center py-12 text-slate-600 text-sm">
+                        No tracks yet. Add your first track above.
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-border/40">
+                        {tracks.map((t, i) => (
+                          <li key={t.id} className="flex items-center gap-3 px-5 py-3">
+                            {/* Sort order buttons */}
+                            <div className="flex flex-col gap-0.5 flex-shrink-0">
+                              <button onClick={() => handleReorderTrack(t.id, "up")} disabled={i === 0}
+                                className="p-0.5 text-slate-700 hover:text-gold disabled:opacity-20 transition-colors">
+                                <ChevronUp size={13} />
+                              </button>
+                              <button onClick={() => handleReorderTrack(t.id, "down")} disabled={i === tracks.length - 1}
+                                className="p-0.5 text-slate-700 hover:text-gold disabled:opacity-20 transition-colors">
+                                <ChevronDown size={13} />
+                              </button>
+                            </div>
+
+                            {/* Cover */}
+                            <div className="w-9 h-9 rounded-lg flex-shrink-0 overflow-hidden border border-border/40"
+                              style={{ background: "#0a0f1e" }}>
+                              {t.cover_url
+                                ? <img src={t.cover_url} alt={t.title} className="w-full h-full object-cover" />
+                                : <div className="w-full h-full flex items-center justify-center text-gold text-xs">♪</div>
+                              }
+                            </div>
+
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-semibold truncate ${t.active ? "text-white" : "text-slate-600"}`}>{t.title}</p>
+                              <p className="text-xs text-slate-600 truncate">{t.artist}</p>
+                            </div>
+
+                            {/* Active toggle */}
+                            <button onClick={() => handleToggleTrack(t.id, t.active)}
+                              className={`flex-shrink-0 transition-colors ${t.active ? "text-emerald-400 hover:text-slate-500" : "text-slate-700 hover:text-emerald-400"}`}
+                              title={t.active ? "Deactivate" : "Activate"}>
+                              {t.active ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                            </button>
+
+                            {/* Delete */}
+                            <button onClick={() => handleDeleteTrack(t.id)}
+                              className="flex-shrink-0 text-slate-700 hover:text-red-400 transition-colors">
+                              <Trash2 size={14} />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
               )}
 
