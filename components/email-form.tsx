@@ -44,11 +44,22 @@ export default function EmailForm({
 
   if (succeeded) {
     return (
-      <div className="flex items-center gap-3 py-4">
-        <CheckCircle size={20} className="text-emerald flex-shrink-0" />
-        <span className="text-sm text-slate-300">
-          You&apos;re in. The transmission is beginning.
-        </span>
+      <div className="space-y-3 py-2">
+        <div className="flex items-center gap-3">
+          <CheckCircle size={20} className="text-emerald flex-shrink-0" />
+          <span className="text-sm text-slate-300">
+            You&apos;re in. The transmission is beginning.
+          </span>
+        </div>
+        <div className="flex items-start gap-2 rounded-lg border border-gold/20 bg-gold/5 px-4 py-3">
+          <span className="text-gold text-base leading-none mt-0.5">!</span>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            <span className="text-gold font-semibold">Check your spam folder.</span>{" "}
+            Our confirmation email may have landed there. Mark it as{" "}
+            <span className="text-slate-300 font-medium">Not Spam</span> to ensure
+            you receive all future transmissions.
+          </p>
+        </div>
       </div>
     );
   }
@@ -89,6 +100,9 @@ export default function EmailForm({
         </button>
       </div>
       {error && <p className="text-xs text-red-400">{error}</p>}
+      <p className="text-xs text-slate-600">
+        After submitting, check your spam folder and confirm the email to activate your access.
+      </p>
     </form>
   );
 }

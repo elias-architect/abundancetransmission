@@ -1,32 +1,50 @@
 import { assertAdmin } from "@/lib/admin-auth";
 import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 
+const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const KEY    = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+/**
+ * POST /api/admin/tracks/upload
+ * Body: { filename: string, mimeType: string }
+ *
+ * Returns a Supabase signed upload URL so the browser can upload
+ * the file directly to Supabase Storage — bypasses Vercel's 4.5 MB body limit.
+ */
 export async function POST(req: NextRequest) {
   const user = await assertAdmin();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const formData = await req.formData();
-  const file = formData.get("file") as File | null;
-  if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
+  const { filename, mimeType } = await req.json();
+  if (!filename) return NextResponse.json({ error: "filename required" }, { status: 400 });
 
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
+  const path = `${Date.now()}-${filename.replace(/[^a-zA-Z0-9.\-_]/g, "-")}`;
+  const type = mimeType || "audio/mpeg";
+
+  // Ask Supabase Storage for a signed upload URL (file never touches Vercel)
+  const signRes = await fetch(
+    `${SB_URL}/storage/v1/object/upload/sign/tracks/${path}`,
+    {
+      method:  "POST",
+      headers: {
+        apikey:         KEY,
+        Authorization:  `Bearer ${KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ upsert: true }),
+    }
   );
 
-  const path = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
+  if (!signRes.ok) {
+    const err = await signRes.text();
+    console.error("Signed URL error:", signRes.status, err);
+    return NextResponse.json({ error: `[${signRes.status}] ${err}` }, { status: 500 });
+  }
 
-  const { error } = await admin.storage.from("tracks").upload(path, buffer, {
-    contentType: file.type || "audio/mpeg",
-    upsert: false,
-  });
+  const { url: signedPath } = await signRes.json();
+  // signedPath is relative, e.g. /storage/v1/object/upload/sign/tracks/xxx?token=...
+  const signedUrl = `${SB_URL}${signedPath}`;
+  const publicUrl = `${SB_URL}/storage/v1/object/public/tracks/${path}`;
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const { data: urlData } = admin.storage.from("tracks").getPublicUrl(path);
-  return NextResponse.json({ url: urlData.publicUrl });
+  return NextResponse.json({ signedUrl, publicUrl, mimeType: type });
 }

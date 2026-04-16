@@ -179,14 +179,30 @@ export default function AdminClient({ adminEmail, adminName }: { adminEmail: str
 
     let audio_url = tUrl.trim();
 
-    // Upload file via server-side API (uses service role key)
+    // Upload file directly to Supabase (bypasses Vercel 4.5 MB limit)
     if (tFile) {
-      const fd = new FormData();
-      fd.append("file", tFile);
-      const upRes = await fetch("/api/admin/tracks/upload", { method: "POST", body: fd });
-      const upData = await upRes.json();
-      if (!upRes.ok) { setTMsg("Upload failed: " + (upData.error ?? "Unknown error")); setTPosting(false); return; }
-      audio_url = upData.url;
+      // Step 1 — get a signed upload URL from our server
+      const signRes = await fetch("/api/admin/tracks/upload", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ filename: tFile.name, mimeType: tFile.type }),
+      });
+      const signData = await signRes.json();
+      if (!signRes.ok) { setTMsg("Upload failed: " + (signData.error ?? "Unknown error")); setTPosting(false); return; }
+
+      // Step 2 — upload the binary directly to Supabase (no Vercel size limit)
+      const putRes = await fetch(signData.signedUrl, {
+        method:  "PUT",
+        headers: { "Content-Type": signData.mimeType },
+        body:    tFile,
+      });
+      if (!putRes.ok) {
+        const errText = await putRes.text();
+        setTMsg("Upload failed: " + errText);
+        setTPosting(false);
+        return;
+      }
+      audio_url = signData.publicUrl;
     }
 
     if (!audio_url) { setTMsg("Provide a file or URL."); setTPosting(false); return; }
