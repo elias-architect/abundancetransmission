@@ -42,12 +42,12 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // Unauthenticated → login
-  if ((path.startsWith("/admin") || path.startsWith("/member")) && !user) {
+  if ((path.startsWith("/admin") || path.startsWith("/dash") || path.startsWith("/member")) && !user) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Role check for /admin
-  if (path.startsWith("/admin") && user) {
+  // Role check for /admin and /dash
+  if ((path.startsWith("/admin") || path.startsWith("/dash")) && user) {
     const role = await getRole(user.id);
     if (role !== "admin") {
       return NextResponse.redirect(new URL("/member", request.url));
@@ -57,12 +57,12 @@ export async function proxy(request: NextRequest) {
   // Logged-in user hitting /login → redirect to their portal
   if (path === "/login" && user) {
     const role = await getRole(user.id);
-    return NextResponse.redirect(new URL(role === "admin" ? "/admin" : "/member", request.url));
+    return NextResponse.redirect(new URL(role === "admin" ? "/dash" : "/member", request.url));
   }
 
   return supabaseResponse;
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/member/:path*", "/login"],
+  matcher: ["/admin/:path*", "/dash/:path*", "/member/:path*", "/login"],
 };
