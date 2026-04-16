@@ -414,6 +414,15 @@ function AccountTab({ userEmail, newsletterSubscribed }: { userEmail: string; ne
   const [newsletter, setNewsletter] = useState(newsletterSubscribed);
   const [savingNl,   setSavingNl]   = useState(false);
   const [nlMsg,      setNlMsg]      = useState("");
+  const [ccCode,     setCcCode]     = useState<string | null>(null);
+  const [ccCopied,   setCcCopied]   = useState(false);
+
+  useEffect(() => {
+    fetch("/api/cc-password")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.code) setCcCode(d.code); })
+      .catch(() => {});
+  }, []);
 
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -496,6 +505,36 @@ function AccountTab({ userEmail, newsletterSubscribed }: { userEmail: string; ne
           </button>
           {nlMsg && <span className="text-xs text-emerald-400">{nlMsg}</span>}
         </div>
+      </div>
+
+      {/* Command Center access code */}
+      <div className="rounded-2xl border border-gold/20 bg-navy/60 p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Shield size={14} className="text-gold" />
+          <h3 className="text-sm font-black text-white">Command Center Access Code</h3>
+        </div>
+        <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+          This code is yours alone. Enter it at the Command Center to access your personal backtest engine and strategy tools.
+        </p>
+        {ccCode ? (
+          <div className="flex items-center gap-3">
+            <div className="flex-1 px-4 py-3 rounded-xl bg-deep border border-gold/20 font-mono text-lg font-black text-gold tracking-widest text-center select-all">
+              {ccCode}
+            </div>
+            <button
+              onClick={() => { navigator.clipboard.writeText(ccCode); setCcCopied(true); setTimeout(() => setCcCopied(false), 2000); }}
+              className="flex items-center gap-1.5 px-4 py-3 rounded-xl bg-gold/10 border border-gold/30 text-gold text-xs font-bold hover:bg-gold/20 transition-all flex-shrink-0">
+              {ccCopied ? <CheckCircle2 size={13} /> : <Lock size={13} />}
+              {ccCopied ? "Copied!" : "Copy"}
+            </button>
+          </div>
+        ) : (
+          <div className="h-12 rounded-xl bg-deep border border-border animate-pulse" />
+        )}
+        <Link href="/command-center"
+          className="inline-flex items-center gap-1.5 mt-3 text-xs font-bold text-gold hover:text-amber-300 transition-colors">
+          Open Command Center <ArrowRight size={11} />
+        </Link>
       </div>
 
       {/* Account info */}

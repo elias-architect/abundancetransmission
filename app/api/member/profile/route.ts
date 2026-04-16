@@ -9,8 +9,17 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://abundancetransmission.
 
 function getResend() { return new Resend(process.env.RESEND_API_KEY ?? "placeholder"); }
 
+/** Generates a unique personal Command Center code: e.g. KRB-742 */
+function generateCCPassword(): string {
+  const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // no I or O (look like 1/0)
+  const digits  = "123456789";
+  const l = () => letters[Math.floor(Math.random() * letters.length)];
+  const d = () => digits[Math.floor(Math.random() * digits.length)];
+  return `${l()}${l()}${l()}-${d()}${d()}${d()}`;
+}
+
 // ── Welcome email sent after profile is saved ────────────────────────────────
-function welcomeCompleteHTML(name: string, email: string, dob: string | null, location: string | null): string {
+function welcomeCompleteHTML(name: string, email: string, dob: string | null, location: string | null, ccPassword: string): string {
   const displayName = name || "Steward";
   return `<!DOCTYPE html>
 <html lang="en">
@@ -57,11 +66,25 @@ function welcomeCompleteHTML(name: string, email: string, dob: string | null, lo
             </td></tr>
           </table>
 
+          <!-- Command Center Access Code -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+            <tr><td style="background:linear-gradient(135deg,#0a1525,#07112b);border:1px solid #c9a84c33;border-left:3px solid #c9a84c;border-radius:0 12px 12px 0;padding:20px 24px;">
+              <div style="color:#c9a84c;font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:10px;">Your Personal Command Center Code</div>
+              <div style="color:#ffffff;font-size:28px;font-weight:900;letter-spacing:6px;margin-bottom:8px;font-family:monospace;">${ccPassword}</div>
+              <p style="color:#64748b;font-size:12px;line-height:1.6;margin:0;">This code is yours alone — it unlocks your personal Command Center. Do not share it. You can always find it in your Member Portal under Account settings.</p>
+            </td></tr>
+          </table>
+
           <!-- CTA -->
           <div style="text-align:center;margin-bottom:28px;">
+            <a href="${SITE}/command-center"
+               style="display:inline-block;background:linear-gradient(90deg,#c9a84c,#e8c96a,#c9a84c);color:#07112b;font-weight:900;font-size:14px;padding:16px 40px;border-radius:12px;text-decoration:none;margin-bottom:12px;">
+              Enter Command Center →
+            </a>
+            <br/>
             <a href="${SITE}/member"
-               style="display:inline-block;background:linear-gradient(90deg,#c9a84c,#e8c96a,#c9a84c);color:#07112b;font-weight:900;font-size:14px;padding:16px 40px;border-radius:12px;text-decoration:none;">
-              Enter Your Portal →
+               style="display:inline-block;color:#475569;font-size:13px;text-decoration:none;margin-top:10px;">
+              Or go to your Member Portal →
             </a>
           </div>
 
@@ -121,12 +144,22 @@ export async function PATCH(req: NextRequest) {
   if (onboarding_complete  !== undefined) updates.onboarding_complete   = onboarding_complete;
 
   const admin = createAdmin(SB, KEY, { auth: { autoRefreshToken: false, persistSession: false } });
+
+  // If completing onboarding, generate a personal CC password if not already set
+  if (onboarding_complete === true) {
+    const { data: existing } = await admin.from("profiles").select("cc_password").eq("id", user.id).single();
+    if (!existing?.cc_password) {
+      updates.cc_password = generateCCPassword();
+    }
+  }
+
   const { error } = await admin.from("profiles").update(updates).eq("id", user.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Send welcome email when onboarding is completed for the first time
   if (onboarding_complete === true && process.env.RESEND_API_KEY) {
     const { data: profile } = await admin.from("profiles").select("*").eq("id", user.id).single();
+    const ccCode = profile?.cc_password ?? (updates.cc_password as string) ?? "—";
     const resend = getResend();
     await resend.emails.send({
       from:    "Niko · Abundance Transmission <niko@abundancetransmission.com>",
@@ -142,6 +175,7 @@ export async function PATCH(req: NextRequest) {
         user.email!,
         profile?.date_of_birth ?? null,
         profile?.birth_location ?? null,
+        ccCode,
       ),
     }).catch(() => {});
   }

@@ -189,6 +189,7 @@ export default function CommandCenterClient() {
   const [selectedMode,  setSelectedMode]  = useState(0);
   const [quoteIdx,      setQuoteIdx]      = useState(0);
   const [unlocked,      setUnlocked]      = useState(false);
+  const [stewardName,   setStewardName]   = useState<string | null>(null);
   const [password,      setPassword]      = useState("");
   const [pwError,       setPwError]       = useState(false);
 
@@ -233,6 +234,7 @@ export default function CommandCenterClient() {
       const data = await res.json();
       if (data.ok) {
         setUnlocked(true);
+        setStewardName(data.name ?? null);
         setPwError(false);
       } else {
         setPwError(true);
@@ -265,7 +267,7 @@ export default function CommandCenterClient() {
                   type="password"
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setPwError(false); }}
-                  placeholder="Access code"
+                  placeholder="Your personal access code"
                   className="w-full px-4 py-3 rounded-xl bg-deep border border-border text-white placeholder:text-slate-600 text-sm outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20 text-center tracking-widest"
                 />
                 {pwError && (
@@ -300,9 +302,17 @@ export default function CommandCenterClient() {
       {/* ── Sidebar ──────────────────────────────────────────────────────── */}
       <aside className="w-16 sm:w-52 border-r border-[#1a2640] bg-[#0a0f1e] flex flex-col py-4 flex-shrink-0">
         <div className="px-3 mb-4 hidden sm:block">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-600 mb-1">
             Command Center
           </div>
+          {stewardName && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <div className="w-5 h-5 rounded-full bg-gold/20 border border-gold/30 flex items-center justify-center flex-shrink-0">
+                <span className="text-gold text-[9px] font-black">{stewardName.charAt(0).toUpperCase()}</span>
+              </div>
+              <span className="text-[10px] text-gold font-semibold truncate">{stewardName}</span>
+            </div>
+          )}
         </div>
 
         {/* Strategy selector */}
