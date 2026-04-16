@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, BookOpen, Lock } from "lucide-react";
+import { ArrowLeft, BookOpen, Lock, ArrowRight, Sparkles } from "lucide-react";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -141,10 +141,12 @@ export default async function BookPage({ params }: { params: Promise<{ slug: str
                   </span>
                   {book.price > 0 && <span className="text-sm text-slate-500">USD · instant download</span>}
                 </div>
-                <button className="w-full sm:w-auto px-10 py-4 rounded-2xl font-black text-sm text-deep hover:opacity-90 transition-all"
+                <Link href={`/books/${slug}/read`}
+                  className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-10 py-4 rounded-2xl font-black text-sm text-deep hover:opacity-90 transition-all"
                   style={{ background: "linear-gradient(90deg, #f59e0b, #fde68a, #f59e0b)" }}>
                   {book.price > 0 ? "Get the Book" : "Read Free"}
-                </button>
+                  <ArrowRight size={14} />
+                </Link>
                 <p className="text-xs text-slate-600">
                   {book.price > 0 ? "PDF · Instant access · No subscription required" : "Available to all readers"}
                 </p>
@@ -198,6 +200,49 @@ export default async function BookPage({ params }: { params: Promise<{ slug: str
         </div>
       </div>
 
+      {/* ── Transformation Summary ── */}
+      {book.transformation_summary ? (
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-12">
+          <div className="rounded-3xl border border-gold/20 bg-navy/40 overflow-hidden">
+            <div className="px-8 pt-8 pb-6 border-b border-border/60">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles size={14} className="text-gold" />
+                <span className="text-xs font-bold uppercase tracking-widest text-gold">What this book will shift in you</span>
+              </div>
+              <h2 className="text-xl font-black text-white">The change you can expect</h2>
+            </div>
+            <div className="p-8 space-y-4">
+              {(book.transformation_summary as string).split("\n\n").map((p: string, i: number) => (
+                <p key={i} className="text-sm text-slate-300 leading-loose">{p}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : book.description ? (
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-12">
+          <div className="rounded-3xl border border-gold/20 bg-navy/40 overflow-hidden">
+            <div className="px-8 pt-8 pb-6 border-b border-border/60">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles size={14} className="text-gold" />
+                <span className="text-xs font-bold uppercase tracking-widest text-gold">What this book will shift in you</span>
+              </div>
+              <h2 className="text-xl font-black text-white">The change you can expect</h2>
+            </div>
+            <div className="p-8 space-y-4">
+              {book.description.split("\n\n").map((p: string, i: number) => (
+                <p key={i} className="text-sm text-slate-300 leading-loose">{p}</p>
+              ))}
+              <div className="pt-4">
+                <Link href={`/books/${slug}/read`}
+                  className="inline-flex items-center gap-2 text-sm font-bold text-gold hover:text-amber-300 transition-colors">
+                  Start reading — Chapter 1 is free <ArrowRight size={13} />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* ── Preview chapter ── */}
       {preview && (
         <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-20">
@@ -225,10 +270,12 @@ export default async function BookPage({ params }: { params: Promise<{ slug: str
             <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center pb-8">
               <Lock size={20} className="text-gold/50 mb-3" />
               <p className="text-xs text-slate-500 mb-4">Continue reading in the full book</p>
-              <button className="px-8 py-3 rounded-xl font-black text-sm text-deep hover:opacity-90 transition-all"
+              <Link href={`/books/${slug}/read`}
+                className="inline-flex items-center gap-2 px-8 py-3 rounded-xl font-black text-sm text-deep hover:opacity-90 transition-all"
                 style={{ background: "linear-gradient(90deg, #f59e0b, #fde68a)" }}>
                 {book.price > 0 ? `Get the Book · $${Number(book.price).toFixed(2)}` : "Read Free"}
-              </button>
+                <ArrowRight size={13} />
+              </Link>
             </div>
           </div>
         </div>
