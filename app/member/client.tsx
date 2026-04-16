@@ -308,7 +308,7 @@ type BookEntry = {
   id: string; slug: string; title: string; tagline: string | null;
   author_agent: string; author_name: string | null;
   description: string | null; cover_image_url: string | null;
-  price: number;
+  price: number; pdf_url: string | null; purchased: boolean;
 };
 
 const AGENT_COLORS: Record<string, string> = {
@@ -326,7 +326,7 @@ function BooksTab() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/books")
+    fetch("/api/member/books")
       .then((r) => r.json())
       .then((d) => setBooks(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
@@ -351,7 +351,7 @@ function BooksTab() {
         const [borderColor, textColor] = agentColor.split(" ");
         return (
           <div key={book.id}
-            className={`rounded-2xl border bg-navy/60 overflow-hidden transition-all hover:bg-navy ${borderColor}`}>
+            className={`rounded-2xl border bg-navy/60 overflow-hidden transition-all ${book.purchased ? "border-emerald-400/30" : borderColor}`}>
             <div className="flex gap-5 p-5">
               {/* Cover */}
               <div className="w-20 flex-shrink-0">
@@ -366,8 +366,15 @@ function BooksTab() {
 
               {/* Info */}
               <div className="flex-1 min-w-0 space-y-2">
-                <div className={`text-xs font-bold uppercase tracking-widest ${textColor}`}>
-                  {book.author_name ?? book.author_agent}
+                <div className="flex items-center gap-2">
+                  <div className={`text-xs font-bold uppercase tracking-widest ${book.purchased ? "text-emerald-400" : textColor}`}>
+                    {book.author_name ?? book.author_agent}
+                  </div>
+                  {book.purchased && (
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">
+                      Owned
+                    </span>
+                  )}
                 </div>
                 <h3 className="text-base font-black text-white leading-tight">{book.title}</h3>
                 {book.tagline && (
@@ -379,21 +386,39 @@ function BooksTab() {
                   </p>
                 )}
 
-                {/* Price + actions */}
+                {/* Actions */}
                 <div className="flex items-center gap-3 pt-1 flex-wrap">
-                  <span className="text-sm font-black text-white">
-                    ${Number(book.price).toFixed(0)}
-                    <span className="text-xs font-normal text-slate-500 ml-1">USD</span>
-                  </span>
-                  <Link href={`/books/${book.slug}/read`}
-                    className="text-xs font-bold text-slate-400 hover:text-gold transition-colors flex items-center gap-1">
-                    Read Ch.1 Free <ArrowRight size={11} />
-                  </Link>
-                  <Link href={`/books/${book.slug}#get-book`}
-                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-black text-deep hover:opacity-90 transition-all"
-                    style={{ background: "linear-gradient(90deg,#f59e0b,#fde68a)" }}>
-                    Get the Book <ArrowRight size={11} />
-                  </Link>
+                  {book.purchased ? (
+                    <>
+                      <Link href={`/books/${book.slug}/read`}
+                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-black text-deep hover:opacity-90 transition-all"
+                        style={{ background: "linear-gradient(90deg,#34d399,#6ee7b7)" }}>
+                        <BookOpen size={11} /> Read Full Book
+                      </Link>
+                      {book.pdf_url && (
+                        <a href={book.pdf_url} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-border/40 border border-border text-slate-300 hover:border-gold/30 hover:text-gold transition-all">
+                          <Download size={11} /> PDF
+                        </a>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-sm font-black text-white">
+                        ${Number(book.price).toFixed(0)}
+                        <span className="text-xs font-normal text-slate-500 ml-1">USD</span>
+                      </span>
+                      <Link href={`/books/${book.slug}/read`}
+                        className="text-xs font-bold text-slate-400 hover:text-gold transition-colors flex items-center gap-1">
+                        Read Ch.1 Free <ArrowRight size={11} />
+                      </Link>
+                      <Link href={`/books/${book.slug}/checkout`}
+                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-black text-deep hover:opacity-90 transition-all"
+                        style={{ background: "linear-gradient(90deg,#f59e0b,#fde68a)" }}>
+                        Get the Book <ArrowRight size={11} />
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

@@ -141,11 +141,12 @@ export default function BookPageClient({ book }: { book: Book }) {
                   <ArrowRight size={13} />
                 </Link>
                 {book.price > 0 && (
-                  <button className="w-full sm:w-auto flex items-center justify-center gap-2 px-10 py-4 rounded-2xl font-black text-sm text-deep hover:opacity-90 transition-all"
+                  <Link href={`/books/${slug}/checkout`}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-10 py-4 rounded-2xl font-black text-sm text-deep hover:opacity-90 transition-all"
                     style={{ background: "linear-gradient(90deg, #f59e0b, #fde68a, #f59e0b)" }}>
                     {t("bookDetail", "getBook")} — ${Number(book.price).toFixed(0)}
                     <ArrowRight size={14} />
-                  </button>
+                  </Link>
                 )}
                 <p className="text-xs text-slate-600">
                   {book.price > 0 ? t("bookDetail", "paidNote") : t("bookDetail", "freeNote")}
@@ -268,7 +269,7 @@ export default function BookPageClient({ book }: { book: Book }) {
             <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center pb-8">
               <Lock size={20} className="text-gold/50 mb-3" />
               <p className="text-xs text-slate-500 mb-4">{t("bookDetail", "continueReading")}</p>
-              <Link href={`/books/${slug}/read`}
+              <Link href={book.price > 0 ? `/books/${slug}/checkout` : `/books/${slug}/read`}
                 className="inline-flex items-center gap-2 px-8 py-3 rounded-xl font-black text-sm text-deep hover:opacity-90 transition-all"
                 style={{ background: "linear-gradient(90deg, #f59e0b, #fde68a)" }}>
                 {book.price > 0 ? `${t("bookDetail", "getBook")} · $${Number(book.price).toFixed(0)}` : t("bookDetail", "readFree")}
