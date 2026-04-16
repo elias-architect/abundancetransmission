@@ -1,12 +1,14 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   FileText, Music, Download, LogOut, Play, Pause,
   ExternalLink, Loader2, ChevronRight, Shield, Sparkles,
-  Star, Calendar, Clock, MapPin, StickyNote, Send
+  Star, Calendar, Clock, MapPin, StickyNote, Lock,
+  Eye, EyeOff, Bell, BellOff, CheckCircle2, Settings
 } from "lucide-react";
 import Link from "next/link";
+import MemberOnboarding from "@/components/member-onboarding";
 
 type ContentItem = {
   id: string; type: "newsletter" | "music"; title: string;
@@ -300,10 +302,117 @@ function SoulCalibrationTab({ userEmail }: { userEmail: string }) {
   );
 }
 
+// ── Account Settings Tab ──────────────────────────────────────────────────────
+function AccountTab({ userEmail, newsletterSubscribed }: { userEmail: string; newsletterSubscribed: boolean }) {
+  const [pw,         setPw]         = useState("");
+  const [pwConfirm,  setPwConfirm]  = useState("");
+  const [showPw,     setShowPw]     = useState(false);
+  const [pwMsg,      setPwMsg]      = useState("");
+  const [savingPw,   setSavingPw]   = useState(false);
+  const [newsletter, setNewsletter] = useState(newsletterSubscribed);
+  const [savingNl,   setSavingNl]   = useState(false);
+  const [nlMsg,      setNlMsg]      = useState("");
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPwMsg("");
+    if (pw.length < 8) { setPwMsg("Password must be at least 8 characters."); return; }
+    if (pw !== pwConfirm) { setPwMsg("Passwords do not match."); return; }
+    setSavingPw(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.updateUser({ password: pw });
+    setSavingPw(false);
+    if (error) { setPwMsg(error.message); return; }
+    setPwMsg("✓ Password updated successfully.");
+    setPw(""); setPwConfirm("");
+    setTimeout(() => setPwMsg(""), 4000);
+  }
+
+  async function handleNewsletterToggle() {
+    setSavingNl(true); setNlMsg("");
+    const next = !newsletter;
+    const res = await fetch("/api/member/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newsletter_subscribed: next }),
+    });
+    setSavingNl(false);
+    if (res.ok) { setNewsletter(next); setNlMsg(next ? "✓ Subscribed." : "✓ Unsubscribed."); setTimeout(() => setNlMsg(""), 3000); }
+    else         { setNlMsg("Failed. Try again."); }
+  }
+
+  return (
+    <div className="space-y-6 max-w-md">
+      {/* Change password */}
+      <div className="rounded-2xl border border-border bg-navy/60 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Lock size={14} className="text-gold" />
+          <h3 className="text-sm font-black text-white">Change Password</h3>
+        </div>
+        <form onSubmit={handleChangePassword} className="space-y-3">
+          <div className="relative">
+            <input type={showPw ? "text" : "password"} value={pw} onChange={(e) => setPw(e.target.value)}
+              placeholder="New password (8+ characters)" required
+              className="w-full px-4 py-3 pr-10 rounded-xl bg-deep border border-border text-white placeholder:text-slate-600 text-sm outline-none focus:border-gold/50 transition-colors" />
+            <button type="button" onClick={() => setShowPw((v) => !v)}
+              className="absolute right-3 top-3.5 text-slate-600 hover:text-slate-400">
+              {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </div>
+          <input type={showPw ? "text" : "password"} value={pwConfirm} onChange={(e) => setPwConfirm(e.target.value)}
+            placeholder="Confirm new password" required
+            className="w-full px-4 py-3 rounded-xl bg-deep border border-border text-white placeholder:text-slate-600 text-sm outline-none focus:border-gold/50 transition-colors" />
+          {pwMsg && (
+            <p className={`text-xs ${pwMsg.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>{pwMsg}</p>
+          )}
+          <button type="submit" disabled={savingPw}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gold text-deep font-black text-sm hover:bg-amber-400 transition-all disabled:opacity-60">
+            {savingPw ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+            Update Password
+          </button>
+        </form>
+      </div>
+
+      {/* Newsletter */}
+      <div className="rounded-2xl border border-border bg-navy/60 p-6">
+        <div className="flex items-center gap-2 mb-1">
+          {newsletter ? <Bell size={14} className="text-teal" /> : <BellOff size={14} className="text-slate-500" />}
+          <h3 className="text-sm font-black text-white">Daily Transmission Newsletter</h3>
+        </div>
+        <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+          Receive new transmissions, newsletters and content updates directly to <span className="text-slate-400">{userEmail}</span>.
+        </p>
+        <div className="flex items-center gap-4">
+          <button onClick={handleNewsletterToggle} disabled={savingNl}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-60 ${
+              newsletter
+                ? "bg-teal/10 border border-teal/30 text-teal hover:bg-teal/20"
+                : "bg-border/40 border border-border text-slate-400 hover:border-teal/30 hover:text-teal"
+            }`}>
+            {savingNl ? <Loader2 size={13} className="animate-spin" /> : newsletter ? <Bell size={13} /> : <BellOff size={13} />}
+            {newsletter ? "Subscribed" : "Subscribe"}
+          </button>
+          {nlMsg && <span className="text-xs text-emerald-400">{nlMsg}</span>}
+        </div>
+      </div>
+
+      {/* Account info */}
+      <div className="rounded-2xl border border-border bg-navy/40 px-5 py-4">
+        <div className="text-xs text-slate-600 mb-2 font-semibold uppercase tracking-wide">Account</div>
+        <div className="text-sm text-slate-400">{userEmail}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function MemberClient({
-  userEmail, userName, isAdmin
-}: { userEmail: string; userName: string; isAdmin: boolean }) {
-  const [tab, setTab] = useState<"newsletters" | "music" | "calibration">("newsletters");
+  userEmail, userName, isAdmin, showOnboarding, newsletterSubscribed,
+}: {
+  userEmail: string; userName: string; isAdmin: boolean;
+  showOnboarding: boolean; newsletterSubscribed: boolean;
+}) {
+  const [onboarding, setOnboarding] = useState(showOnboarding);
+  const [tab, setTab] = useState<"newsletters" | "music" | "calibration" | "account">("newsletters");
   const [content, setContent] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -326,6 +435,14 @@ export default function MemberClient({
 
   return (
     <div className="min-h-screen bg-deep">
+      {/* Onboarding overlay */}
+      {onboarding && (
+        <MemberOnboarding
+          userEmail={userEmail}
+          userName={userName}
+          onDone={() => { setOnboarding(false); window.history.replaceState({}, "", "/member"); }}
+        />
+      )}
       {/* Header */}
       <header className="border-b border-border/60 bg-navy/80 sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
@@ -370,10 +487,16 @@ export default function MemberClient({
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${tab === "calibration" ? "bg-gold/10 text-gold border border-gold/30" : "text-slate-500 hover:text-slate-300"}`}>
             <Star size={12} /> Soul Calibration
           </button>
+          <button onClick={() => setTab("account")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${tab === "account" ? "bg-border text-white border border-border" : "text-slate-500 hover:text-slate-300"}`}>
+            <Settings size={12} /> Account
+          </button>
         </div>
 
         {/* Content */}
-        {tab === "calibration" ? (
+        {tab === "account" ? (
+          <AccountTab userEmail={userEmail} newsletterSubscribed={newsletterSubscribed} />
+        ) : tab === "calibration" ? (
           <SoulCalibrationTab userEmail={userEmail} />
         ) : loading ? (
           <div className="flex items-center justify-center py-20">
