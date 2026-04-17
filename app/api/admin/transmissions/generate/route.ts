@@ -9,6 +9,8 @@ const HDR = { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "appl
 const ELEVEN_KEY     = process.env.ELEVENLABS_API_KEY!;
 const ELEVEN_VOICE   = process.env.ELEVENLABS_VOICE_ID!;
 const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY!;
+const TG_TOKEN       = process.env.TELEGRAM_BOT_TOKEN!;
+const TG_CHAT_ID     = "8291584959";
 
 const anthropic = new Anthropic({ apiKey: ANTHROPIC_KEY });
 
@@ -151,5 +153,24 @@ export async function POST(req: NextRequest) {
 
   const [saved] = await insertRes.json();
 
+  // Notify Telegram
+  await notifyTelegram(rawInput, content.instagram_caption, saved?.id);
+
   return NextResponse.json({ ok: true, transmission: saved });
+}
+
+async function notifyTelegram(rawInput: string, instagramCaption: string, id: string) {
+  if (!TG_TOKEN) return;
+  try {
+    const preview = rawInput.slice(0, 200);
+    const caption = instagramCaption.slice(0, 300);
+    const msg = `✨ *New Transmission Ready*\n\n*Raw:*\n_${preview}${rawInput.length > 200 ? "…" : ""}_\n\n*Instagram Caption:*\n${caption}${instagramCaption.length > 300 ? "…" : ""}\n\n📋 ID: \`${id}\``;
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: TG_CHAT_ID, text: msg, parse_mode: "Markdown" }),
+    });
+  } catch (err) {
+    console.error("Telegram notify failed:", err);
+  }
 }
