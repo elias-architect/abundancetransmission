@@ -1375,6 +1375,7 @@ type TransmissionResult = {
   instagram_caption: string;
   tiktok_caption: string;
   audio_url: string | null;
+  video_url: string | null;
 };
 
 type CopiedKey = "blog" | "newsletter" | "instagram" | "tiktok" | null;
@@ -1382,7 +1383,8 @@ type CopiedKey = "blog" | "newsletter" | "instagram" | "tiktok" | null;
 function TransmissionPanel() {
   const [input, setInput]       = useState("");
   const [loading, setLoading]   = useState(false);
-  const [result, setResult]     = useState<TransmissionResult | null>(null);
+  const [result, setResult]     = useState<TransmissionResult[] | null>(null);
+  const [activeVar, setActiveVar] = useState(0);
   const [error, setError]       = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>("instagram");
   const [copied, setCopied]     = useState<CopiedKey>(null);
@@ -1398,7 +1400,7 @@ function TransmissionPanel() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      setResult(data.transmission);
+      setResult(data.transmissions ?? [data.transmission]);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -1449,46 +1451,76 @@ function TransmissionPanel() {
 
       {error && <div className="rounded-xl border border-red-900/40 bg-red-950/20 p-4 mb-5 text-sm text-red-400">{error}</div>}
 
-      {result && (
-        <div className="space-y-3">
-          {([
-            { id: "instagram", label: "Instagram Caption", text: result.instagram_caption, key: "instagram" as CopiedKey },
-            { id: "tiktok",    label: "TikTok / Reels",    text: result.tiktok_caption,    key: "tiktok"    as CopiedKey },
-            { id: "newsletter",label: "Newsletter",         text: result.newsletter,         key: "newsletter"as CopiedKey },
-            { id: "blog",      label: "Blog Post",         text: result.blog_post,          key: "blog"      as CopiedKey },
-          ]).map(({ id, label, text, key }) => (
-            <div key={id} className="rounded-2xl border border-border bg-navy/60 overflow-hidden">
-              <button onClick={() => toggle(id)}
-                className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
-                <span className="text-xs font-bold uppercase tracking-widest text-gold">{label}</span>
-                {expanded === id ? <ChevronUp size={14} className="text-slate-500" /> : <ChevronDown size={14} className="text-slate-500" />}
-              </button>
-              {expanded === id && (
-                <div className="px-5 pb-5">
-                  <pre className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">{text}</pre>
-                  <button onClick={() => copy(text, key)}
-                    className="mt-4 flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-all">
-                    {copied === key ? <Check size={12} /> : null}
-                    {copied === key ? "Copied!" : "Copy"}
-                  </button>
-                </div>
-              )}
+      {result && result.length > 0 && (() => {
+        const LABELS = ["🌊 Calm & Poetic", "✨ Playful & Curious", "🔥 Passionate & Direct"];
+        const TIMES  = ["7:00 PM", "7:45 PM", "8:30 PM"];
+        const v = result[activeVar];
+        if (!v) return null;
+        const videoMeta = (() => { try { return JSON.parse(v.video_url ?? "{}"); } catch { return {}; } })();
+        return (
+          <div className="space-y-3">
+            {/* Variation tabs */}
+            <div className="flex gap-2">
+              {LABELS.map((label, i) => (
+                <button key={i} onClick={() => setActiveVar(i)}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${activeVar === i ? "bg-gold/15 text-gold border border-gold/30" : "bg-navy/40 text-slate-500 border border-border hover:text-white"}`}>
+                  {label}<br/><span className="text-[10px] opacity-60">{TIMES[i]}</span>
+                </button>
+              ))}
             </div>
-          ))}
 
-          {result.audio_url && (
-            <div className="rounded-2xl border border-border bg-navy/60 p-5">
-              <div className="text-xs font-bold uppercase tracking-widest text-gold mb-3">Voice Narration</div>
-              <audio controls className="w-full" src={result.audio_url} />
-            </div>
-          )}
+            {/* Video script */}
+            {videoMeta.script && (
+              <div className="rounded-2xl border border-gold/20 bg-navy/60 p-5">
+                <div className="text-xs font-bold uppercase tracking-widest text-gold mb-2">Video Script · {TIMES[activeVar]}</div>
+                <p className="text-sm text-slate-200 leading-relaxed italic">"{videoMeta.script}"</p>
+                <button onClick={() => copy(videoMeta.script, "tiktok")}
+                  className="mt-3 flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-all">
+                  {copied === "tiktok" ? <Check size={11} /> : null} Copy Script
+                </button>
+              </div>
+            )}
 
-          <button onClick={() => { setResult(null); setInput(""); }}
-            className="w-full mt-1 py-3 rounded-xl border border-border text-slate-500 text-sm hover:text-white hover:border-slate-600 transition-all">
-            New Transmission
-          </button>
-        </div>
-      )}
+            {/* Content cards */}
+            {([
+              { id: "instagram", label: "Instagram Caption", text: v.instagram_caption, key: "instagram" as CopiedKey },
+              { id: "tiktok2",   label: "TikTok / Reels",    text: v.tiktok_caption,    key: "tiktok"    as CopiedKey },
+              { id: "newsletter",label: "Newsletter",         text: v.newsletter,         key: "newsletter"as CopiedKey },
+              { id: "blog",      label: "Blog Post",         text: v.blog_post,          key: "blog"      as CopiedKey },
+            ]).map(({ id, label, text, key }) => (
+              <div key={`${activeVar}-${id}`} className="rounded-2xl border border-border bg-navy/60 overflow-hidden">
+                <button onClick={() => toggle(id)}
+                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
+                  <span className="text-xs font-bold uppercase tracking-widest text-gold">{label}</span>
+                  {expanded === id ? <ChevronUp size={14} className="text-slate-500" /> : <ChevronDown size={14} className="text-slate-500" />}
+                </button>
+                {expanded === id && (
+                  <div className="px-5 pb-5">
+                    <pre className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">{text}</pre>
+                    <button onClick={() => copy(text, key)}
+                      className="mt-4 flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg border border-gold/30 text-gold hover:bg-gold/10 transition-all">
+                      {copied === key ? <Check size={12} /> : null}
+                      {copied === key ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {v.audio_url && (
+              <div className="rounded-2xl border border-border bg-navy/60 p-5">
+                <div className="text-xs font-bold uppercase tracking-widest text-gold mb-3">Voice Narration</div>
+                <audio controls className="w-full" src={v.audio_url} />
+              </div>
+            )}
+
+            <button onClick={() => { setResult(null); setInput(""); setActiveVar(0); }}
+              className="w-full mt-1 py-3 rounded-xl border border-border text-slate-500 text-sm hover:text-white hover:border-slate-600 transition-all">
+              New Transmission
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }
